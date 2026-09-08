@@ -1,0 +1,21 @@
+# Install PyTorch with CUDA first, then this file.
+# See README.md / run.ps1 for the torch install command.
+
+accelerate>=0.31.0
+diffusers>=0.31.0
+transformers>=4.44.0
+huggingface_hub>=0.25.0
+safetensors>=0.4.0
+peft>=0.13.0
+
+gradio>=5.8.0
+pillow>=10.3.0
+numpy>=1.26.0
+opencv-python-headless>=4.10.0
+scipy>=1.13.0
+tqdm>=4.66.0
+psutil>=6.0.0
+nvidia-ml-py>=12.560.0
+
+# CatVTON attention checkpoint loading
+# (accelerate.load_checkpoint_in_model)

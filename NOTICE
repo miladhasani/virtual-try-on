@@ -1,0 +1,13 @@
+This project vendors and adapts inference code from CatVTON:
+
+  CatVTON: Concatenation Is All You Need for Virtual Try-On with Diffusion Models
+  Zheng Chong et al., ICLR 2025
+  https://github.com/Zheng-Chong/CatVTON
+  https://arxiv.org/abs/2407.15886
+
+CatVTON code, checkpoints, and demo materials are licensed under
+Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+(CC BY-NC-SA 4.0). They are for non-commercial research use only.
+
+Cloth parsing uses mattmdjaga/segformer_b2_clothes on Hugging Face.
+The SD 1.5 inpainting UNet is subject to the CreativeML OpenRAIL-M license.
