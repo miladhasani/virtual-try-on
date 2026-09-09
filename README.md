@@ -9,8 +9,9 @@ This is inference only. Fine-tuning is intentionally out of scope for v1.
 - Person + garment upload, cloth type (`upper` / `lower` / `overall`)
 - Model dropdown: CatVTON Mix, VITON-HD, DressCode, and Mask-Free (one adapter in VRAM at a time)
 - Quality presets: Fast / Balanced / Quality
-- Before/after slider, recent-result gallery
-- Live GPU VRAM, GPU util, temperature, CPU, and RAM while generating
+- Tabbed stage: result, before/after slider, and a session gallery
+- Run metadata after every render (model, preset, canvas, steps, elapsed)
+- Live VRAM gauge plus GPU util, temperature, CPU, and RAM while generating
 - Automatic retry on CUDA OOM (drops to Fast)
 - Unload button to free VRAM
 
