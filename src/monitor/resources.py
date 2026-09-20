@@ -63,7 +63,12 @@ def sample_resources(gpu_index: int = 0) -> dict[str, Any]:
         "vram_used_gb": 0.0,
         "vram_total_gb": 0.0,
         "vram_percent": 0.0,
+        "vram_app_gb": 0.0,
+        "vram_app_reserved_gb": 0.0,
+        "vram_app_percent": 0.0,
     }
+
+    _fill_torch_vram(stats)
 
     if not _init_nvml():
         return stats
@@ -94,8 +99,36 @@ def sample_resources(gpu_index: int = 0) -> dict[str, Any]:
             }
         )
     except Exception:  # noqa: BLE001
-        stats["gpu_name"] = "GPU stats unavailable"
+        if not stats["gpu_available"]:
+            stats["gpu_name"] = "GPU stats unavailable"
     return stats
+
+
+def _fill_torch_vram(stats: dict[str, Any]) -> None:
+    """Board totals plus this process, using PyTorch when CUDA is up."""
+    try:
+        import torch
+    except Exception:  # noqa: BLE001
+        return
+    if not torch.cuda.is_available():
+        return
+    try:
+        props = torch.cuda.get_device_properties(0)
+        total = float(props.total_memory)
+        allocated = float(torch.cuda.memory_allocated(0))
+        reserved = float(torch.cuda.memory_reserved(0))
+        stats["gpu_name"] = stats["gpu_name"] if stats.get("gpu_available") else props.name
+        stats["vram_app_gb"] = allocated / 1024**3
+        stats["vram_app_reserved_gb"] = reserved / 1024**3
+        stats["vram_app_percent"] = (reserved / total * 100.0) if total else 0.0
+        if not stats.get("gpu_available"):
+            # NVML missing: still show board totals from CUDA.
+            stats["gpu_available"] = True
+            stats["vram_total_gb"] = total / 1024**3
+            stats["vram_used_gb"] = reserved / 1024**3
+            stats["vram_percent"] = stats["vram_app_percent"]
+    except Exception:  # noqa: BLE001
+        return
 
 
 # Warm up CPU percent so the first sample is not 0.

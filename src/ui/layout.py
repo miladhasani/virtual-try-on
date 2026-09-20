@@ -13,8 +13,10 @@ from src.config import (
     DEFAULT_MODEL,
     DEFAULT_PRESET,
     DEFAULT_SEED,
+    DEFAULT_VRAM_PROFILE,
     MODEL_CHOICES,
     QUALITY_PRESETS,
+    VRAM_PROFILES,
 )
 from src.monitor.resources import JobState
 from src.pipeline.tryon import TryOnService
@@ -68,7 +70,7 @@ def build_ui(
                     elem_classes=["segmented"],
                 )
 
-                gr.HTML(fragments.section("02", "Checkpoint", "one adapter in VRAM"))
+                gr.HTML(fragments.section("02", "Checkpoint", "one model in VRAM"))
                 model = gr.Dropdown(
                     choices=MODEL_CHOICES,
                     value=DEFAULT_MODEL,
@@ -83,19 +85,41 @@ def build_ui(
                     choices=list(QUALITY_PRESETS),
                     value=DEFAULT_PRESET,
                     label="Quality preset",
-                    info="Fast is safest on 8 GB. Quality can exhaust VRAM.",
+                    info="Tiny/Fast save VRAM. Studio and GPU-mode FLUX need a large card.",
                     elem_classes=["segmented"],
                 )
                 with gr.Accordion("Advanced controls", open=False, elem_id="advanced"):
+                    vram_profile = gr.Radio(
+                        choices=list(VRAM_PROFILES),
+                        value=DEFAULT_VRAM_PROFILE,
+                        label="VRAM mode",
+                        info="Auto picks for this GPU. Offload / Sequential / 4-bit trade time so FLUX can run on 8–12 GB.",
+                        elem_classes=["segmented"],
+                    )
+                    with gr.Row():
+                        width = gr.Slider(
+                            256,
+                            1280,
+                            value=QUALITY_PRESETS[DEFAULT_PRESET]["width"],
+                            step=64,
+                            label="Canvas width",
+                        )
+                        height = gr.Slider(
+                            320,
+                            1536,
+                            value=QUALITY_PRESETS[DEFAULT_PRESET]["height"],
+                            step=64,
+                            label="Canvas height",
+                        )
                     steps = gr.Slider(
-                        10,
+                        8,
                         80,
                         value=QUALITY_PRESETS[DEFAULT_PRESET]["steps"],
                         step=1,
                         label="Diffusion steps",
                     )
                     guidance = gr.Slider(
-                        1.0, 7.5, value=DEFAULT_GUIDANCE, step=0.5, label="Guidance (CFG)"
+                        1.0, 40.0, value=DEFAULT_GUIDANCE, step=0.5, label="Guidance (CFG)"
                     )
                     seed = gr.Slider(
                         -1, 10_000, value=DEFAULT_SEED, step=1, label="Seed (−1 = random)"
@@ -140,11 +164,11 @@ def build_ui(
                     label="Start from an example",
                 )
 
-        preset.change(handlers.sync_steps, inputs=preset, outputs=steps)
-        model.change(handlers.describe_model, inputs=model, outputs=model_blurb)
+        preset.change(handlers.sync_preset, inputs=preset, outputs=[steps, width, height])
+        model.change(handlers.sync_model, inputs=model, outputs=[model_blurb, guidance])
         generate_btn.click(
             handlers.generate,
-            inputs=[person, garment, cloth_type, preset, model, steps, guidance, seed],
+            inputs=[person, garment, cloth_type, preset, model, steps, guidance, seed, width, height, vram_profile],
             outputs=[result, comparison, gallery, meta, status, monitor],
         )
         unload_btn.click(handlers.unload, outputs=[status, monitor])

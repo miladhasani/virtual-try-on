@@ -1,14 +1,14 @@
 # Atelier — local virtual try-on
 
-A Gradio app that takes a **person photo** and a **garment photo**, then generates a try-on image with pretrained **[CatVTON](https://github.com/Zheng-Chong/CatVTON)** (ICLR 2025). Built for a laptop **RTX 4070** (~8 GB VRAM).
+A Gradio app that takes a **person photo** and a **garment photo**, then generates a try-on image with pretrained **[CatVTON](https://github.com/Zheng-Chong/CatVTON)** (ICLR 2025). SD 1.5 adapters fit a laptop **RTX 4070** (~8 GB VRAM). FLUX checkpoints need about **24 GB**.
 
 This is inference only. Fine-tuning is intentionally out of scope for v1.
 
 ## What you get
 
 - Person + garment upload, cloth type (`upper` / `lower` / `overall`)
-- Model dropdown: CatVTON Mix, VITON-HD, DressCode, and Mask-Free (one adapter in VRAM at a time)
-- Quality presets: Fast / Balanced / Quality
+- Model dropdown: four SD 1.5 CatVTON adapters plus three FLUX checkpoints (24 GB+)
+- Quality presets: Fast / Balanced / Quality / Studio
 - Tabbed stage: result, before/after slider, and a session gallery
 - Run metadata after every render (model, preset, canvas, steps, elapsed)
 - Live VRAM gauge plus GPU util, temperature, CPU, and RAM while generating
@@ -17,24 +17,36 @@ This is inference only. Fine-tuning is intentionally out of scope for v1.
 
 ## Models
 
-All four share the same SD 1.5 inpainting UNet. Switching models only loads a ~198 MB attention adapter, so VRAM stays about the same.
+Selecting a checkpoint shows a comparison card (best-for, training data, VRAM, mask behavior). Dropdown labels also include the VRAM class.
 
-| Dropdown choice | Best for |
-|-----------------|----------|
-| CatVTON Mix | Everyday tops, pants, and outfits (default) |
-| CatVTON VITON-HD | Upper-body garments |
-| CatVTON DressCode | Dresses and fuller looks |
-| CatVTON Mask-Free | Photos where the auto clothing mask is messy |
+**SD 1.5 (about 8 GB).** These four share the same inpainting UNet. Switching only loads a ~198 MB attention adapter. **No Hugging Face login.** Weights are [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) (non-commercial). Official SD 1.5 inpainting is often gated; this app prefers a public mirror first.
+
+| Dropdown choice | Best for | Access |
+|-----------------|----------|--------|
+| Mix — everyday default | Tops, pants, and outfits. Start here. | Open · no login · CC BY-NC-SA 4.0 |
+| VITON-HD — shirts & jackets | Upper-body garments only. | Open · no login · CC BY-NC-SA 4.0 |
+| DressCode — dresses & variety | Dresses, bottoms, and fuller looks. | Open · no login · CC BY-NC-SA 4.0 |
+| Mask-Free — imperfect photos | Casual shots where auto-masking is messy. | Open · no login · CC BY-NC-SA 4.0 |
+
+**FLUX (about 24 GB).** Sharper than SD 1.5. The CatVTON / community adapters are public, but first use downloads the gated [FLUX.1-Fill-dev](https://huggingface.co/black-forest-labs/FLUX.1-Fill-dev) backbone. Create a Hugging Face account, accept the FLUX.1 [dev] non-commercial license, and run `huggingface-cli login`. Optional: `$env:CATVTON_FLUX_FILL = "path-or-hf-id"`.
+
+| Dropdown choice | Best for | Access |
+|-----------------|----------|--------|
+| FLUX — highest fidelity | Author CatVTON LoRA on FLUX fill. | HF login + FLUX license |
+| FLUX Alpha — logos & fabric | Community VITON-HD LoRA; better small prints. | HF login + FLUX license |
+| FLUX Beta — mixed garments | Full FLUX fill fine-tune; widest garment mix. | HF login + FLUX license |
 
 ## Hardware
 
-| Preset    | Size      | Steps | Notes                                      |
-|-----------|-----------|-------|--------------------------------------------|
-| Fast      | 384×512   | 20    | Safest on 8 GB                             |
-| Balanced  | 576×768   | 30    | Default                                    |
-| Quality   | 768×1024  | 50    | May OOM if the GPU is also driving a busy display |
+| Preset    | Size       | Steps | Notes                                         |
+|-----------|------------|-------|-----------------------------------------------|
+| Tiny      | 256×384    | 16    | Smallest canvas; use with FLUX offload     |
+| Fast      | 384×512    | 20    | Safest SD 1.5 on 8 GB                      |
+| Balanced  | 576×768    | 30    | Default                                    |
+| Quality   | 768×1024   | 50    | May OOM if the GPU is also driving a display |
+| Studio    | 1024×1280  | 36    | For 16 GB+ cards                           |
 
-Use **CUDA-enabled NVIDIA drivers**. Close Chrome hardware acceleration / other GPU apps before Quality. First launch downloads several GB of checkpoints.
+**Low-VRAM FLUX:** open **Advanced controls**. Set **VRAM mode** to Offload, 4-bit (needs `bitsandbytes`), or Sequential, and drop to Tiny/Fast. Generation is slower because layers swap to RAM. Auto does this for you when the card is smaller than 24 GB.
 
 If native Windows install fails (rare parser / CUDA issues), run the same app in **WSL2 + CUDA**.
 
@@ -93,7 +105,7 @@ python -m src.pipeline.tryon --person photo.jpg --garment shirt.jpg --preset Fas
 
 ## License
 
-CatVTON code and weights are **CC BY-NC-SA 4.0** — non-commercial research only. See [NOTICE](NOTICE). Commercial production needs a different model or a license from the authors.
+CatVTON code and SD 1.5 / Mask-Free weights are **CC BY-NC-SA 4.0** — non-commercial research only. FLUX checkpoints also need the Black Forest Labs **FLUX.1 [dev] non-commercial license** (gated download). See [NOTICE](NOTICE). Commercial production needs a different model or a license from the authors.
 
 Cloth parsing uses [`mattmdjaga/segformer_b2_clothes`](https://huggingface.co/mattmdjaga/segformer_b2_clothes) instead of CatVTON’s DensePose + SCHP stack, so this repo stays installable on Windows without Detectron2.
 

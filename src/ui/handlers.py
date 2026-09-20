@@ -5,7 +5,7 @@ from __future__ import annotations
 import gradio as gr
 from PIL import Image
 
-from src.config import QUALITY_PRESETS
+from src.config import QUALITY_PRESETS, get_model
 from src.monitor.resources import JobState, sample_resources
 from src.pipeline.tryon import TryOnService
 from src.ui import fragments
@@ -31,8 +31,13 @@ class StudioHandlers:
     def describe_model(self, model_id: str) -> str:
         return fragments.model_card(model_id)
 
-    def sync_steps(self, preset: str) -> int:
-        return QUALITY_PRESETS[preset]["steps"]
+    def sync_model(self, model_id: str):
+        spec = get_model(model_id)
+        return fragments.model_card(model_id), float(spec.get("default_guidance", 2.5))
+
+    def sync_preset(self, preset: str):
+        spec = QUALITY_PRESETS[preset]
+        return spec["steps"], spec["width"], spec["height"]
 
     def generate(
         self,
@@ -44,6 +49,9 @@ class StudioHandlers:
         steps,
         guidance,
         seed,
+        width,
+        height,
+        vram_profile,
     ):
         if person is None or garment is None:
             raise gr.Error("Upload both a person photo and a garment photo.")
@@ -58,6 +66,9 @@ class StudioHandlers:
                 num_inference_steps=int(steps) if steps else None,
                 guidance_scale=float(guidance),
                 seed=int(seed),
+                width=int(width) if width else None,
+                height=int(height) if height else None,
+                vram_profile=str(vram_profile or "Auto"),
             )
         except Exception as exc:
             raise gr.Error(str(exc)) from exc

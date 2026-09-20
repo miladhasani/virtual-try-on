@@ -94,7 +94,7 @@ class CatVTONPipeline:
         self.noise_scheduler = _sd15_ddim_scheduler()
         self.vae = AutoencoderKL.from_pretrained(
             VAE_REPO, torch_dtype=weight_dtype, cache_dir=str(HF_CACHE)
-        ).to(self.device)
+        )
         self.vae.enable_slicing()
         self.unet = _load_inpainting_unet(weight_dtype, self.device)
         init_adapter(self.unet, cross_attn_cls=SkipAttnProcessor)
@@ -102,10 +102,33 @@ class CatVTONPipeline:
         self._load_attn_checkpoint(attn_ckpt, attn_ckpt_version)
         self.unet.eval()
         self.vae.eval()
+        self.vram_profile = "GPU"
+        self.apply_vram_profile("GPU")
 
         if use_tf32 and self.device.type == "cuda":
             torch.set_float32_matmul_precision("high")
             torch.backends.cuda.matmul.allow_tf32 = True
+
+    def apply_vram_profile(self, profile: str) -> None:
+        """Keep the UNet on GPU; park the VAE in RAM when saving VRAM."""
+        if profile == "4-bit":
+            profile = "Offload"
+        self.vram_profile = profile
+        if self.device.type != "cuda" or profile == "GPU":
+            self.vae.to(self.device)
+            self.unet.to(self.device)
+            return
+        self.vae.to("cpu")
+        self.unet.to(self.device)
+        try:
+            self.unet.set_attention_slice("auto")
+        except Exception:
+            pass
+        if profile == "Sequential":
+            try:
+                self.unet.enable_forward_chunking(chunk_size=1, dim=0)
+            except Exception:
+                pass
 
     def _load_attn_checkpoint(self, attn_ckpt: str, version: str) -> None:
         sub_folder = ATTN_SUBFOLDERS[version]
@@ -215,7 +238,8 @@ class CatVTONPipeline:
 
         latents = latents.split(latents.shape[concat_dim] // 2, dim=concat_dim)[0]
         latents = 1 / self.vae.config.scaling_factor * latents
-        decoded = self.vae.decode(latents.to(self.device, dtype=self.weight_dtype)).sample
+        vae_device = next(self.vae.parameters()).device
+        decoded = self.vae.decode(latents.to(vae_device, dtype=self.weight_dtype)).sample
         decoded = (decoded / 2 + 0.5).clamp(0, 1)
         image_np = decoded.cpu().permute(0, 2, 3, 1).float().numpy()
         return numpy_to_pil(image_np)[0]
