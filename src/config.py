@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
+import warnings
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -14,8 +16,10 @@ OUTPUTS_DIR = ROOT / "outputs"
 ASSETS_DIR = ROOT / "assets"
 EXAMPLES_DIR = ASSETS_DIR / "examples"
 THEME_CSS = Path(__file__).resolve().parent / "ui" / "theme.css"
+SECRETS_PATH = ROOT / ".secrets.json"
 
 LOCAL_INPAINT = WEIGHTS_DIR / "local" / "inpainting"
+LOCAL_PIX2PIX = WEIGHTS_DIR / "local" / "pix2pix"
 LOCAL_ATTN = WEIGHTS_DIR / "local" / "catvton"
 
 
@@ -55,6 +59,20 @@ BASE_MODEL_CANDIDATES = [
     if candidate
 ]
 
+# InstructPix2Pix UNet for Mask-Free CatVTON (8-ch, not the 9-ch inpaint UNet).
+P2P_BASE_CANDIDATES = [
+    candidate
+    for candidate in (
+        os.environ.get("CATVTON_P2P_MODEL"),
+        str(LOCAL_PIX2PIX)
+        if _complete_file(LOCAL_PIX2PIX / "unet" / "diffusion_pytorch_model.fp16.safetensors", 1_500_000_000)
+        or _complete_file(LOCAL_PIX2PIX / "unet" / "diffusion_pytorch_model.safetensors", 1_500_000_000)
+        else None,
+        "timbrooks/instruct-pix2pix",
+    )
+    if candidate
+]
+
 QUALITY_PRESETS = {
     "Tiny": {"width": 256, "height": 384, "steps": 16},
     "Fast": {"width": 384, "height": 512, "steps": 20},
@@ -62,6 +80,11 @@ QUALITY_PRESETS = {
     "Quality": {"width": 768, "height": 1024, "steps": 50},
     "Studio": {"width": 1024, "height": 1280, "steps": 36},
 }
+
+
+def preset_tooltip(name: str) -> str:
+    spec = QUALITY_PRESETS[name]
+    return f"{spec['width']}×{spec['height']} · {spec['steps']} steps"
 
 VRAM_PROFILES = {
     "Auto": "Pick from this GPU",
@@ -93,7 +116,7 @@ DEFAULT_MODEL = "catvton-mix"
 
 CLOTH_TYPES = ["upper", "lower", "overall"]
 
-# SD 1.5 CatVTON adapters share one UNet. FLUX checkpoints need a ~24 GB card.
+# Mix / VITON-HD / DressCode share one inpaint UNet. Mask-Free uses InstructPix2Pix.
 TRYON_MODELS = {
     "catvton-mix": {
         "id": "catvton-mix",
@@ -188,19 +211,21 @@ TRYON_MODELS = {
     "catvton-maskfree": {
         "id": "catvton-maskfree",
         "label": "Mask-Free — imperfect photos",
-        "tagline": "Forgiving when the mask is messy",
+        "tagline": "No clothing mask — InstructPix2Pix",
         "info": (
-            "Mask-free Mix variant. More tolerant when auto-masking misses straps, prints, or busy poses. "
-            "Still SD 1.5, still ~8 GB — not a quality upgrade over Mix on clean photos."
+            "Official CatVTON-MaskFree path: InstructPix2Pix UNet, person and garment concatenated "
+            "side-by-side in latent space. Diffusion is not driven by a clothing mask, so skipped straps "
+            "cannot strip the outfit. Top still locks trousers, face, and hair from the person photo. "
+            "First use downloads the Pix2Pix UNet. Still ~8 GB."
         ),
-        "best_for": "Casual photos with a messy auto-mask",
+        "best_for": "Casual photos where auto-masking is messy",
         "trained_on": "Mask-free Mix 48k at 1024px",
-        "mask_note": "Tolerates an imperfect mask",
+        "mask_note": "Mask-free diffusion; Top keeps trousers, face, and hair",
         "vram_gb": 8,
         "vram_label": "8 GB",
         "weight_label": "maskfree/mix-48k-1024",
-        "foot": "SD 1.5 inpainting · swaps a 198 MB attention adapter",
-        "backend": "sd15",
+        "foot": "SD 1.5 InstructPix2Pix · 8-ch UNet + 198 MB attention adapter",
+        "backend": "sd15-p2p",
         "default_guidance": 2.5,
         "hf_repo": "zhengchong/CatVTON-MaskFree",
         "local_dir": "catvton-maskfree",
@@ -211,8 +236,62 @@ TRYON_MODELS = {
         "access_label": "Open download · no login",
         "license_label": "CC BY-NC-SA 4.0",
         "access_note": (
-            "Public Mask-Free adapter — no Hugging Face login. "
-            "Non-commercial only. Official SD 1.5 inpainting is gated; this app uses a public mirror first."
+            "Public Mask-Free adapter — no Hugging Face login. Non-commercial only. "
+            "Uses the public InstructPix2Pix UNet, not the 9-channel inpainting UNet."
+        ),
+    },
+    "gemini-flash": {
+        "id": "gemini-flash",
+        "label": "Gemini — Google cloud",
+        "tagline": "No local VRAM · Gemini API key",
+        "info": (
+            "Google Gemini image model (Nano Banana). Sends the person and garment photos to Google "
+            "and returns a try-on image. Nothing loads on your GPU. Paste an API key from Google AI Studio."
+        ),
+        "best_for": "Cloud try-on when the laptop GPU is busy or too small",
+        "trained_on": "Gemini native image generation",
+        "mask_note": "No clothing mask — Gemini reads both photos",
+        "vram_gb": 0,
+        "vram_label": "cloud",
+        "weight_label": "gemini-3.1-flash-image",
+        "foot": "Google Gemini API · billed to your AI Studio key",
+        "backend": "gemini",
+        "gemini_models": ("gemini-3.1-flash-image", "gemini-2.5-flash-image"),
+        "default_guidance": 2.5,
+        "access": "api-key",
+        "access_short": "API key",
+        "access_label": "Google AI Studio API key",
+        "license_label": "Gemini API terms",
+        "access_note": (
+            "Create a key at aistudio.google.com/apikey and paste it below. "
+            "The key stays on this machine in .secrets.json and is never committed."
+        ),
+    },
+    "hf-catvton": {
+        "id": "hf-catvton",
+        "label": "Hugging Face — CatVTON Space",
+        "tagline": "No local VRAM · public Space",
+        "info": (
+            "Runs CatVTON on Hugging Face ZeroGPU instead of this laptop. "
+            "The official zhengchong/CatVTON Space is often down; this app uses a live public "
+            "CatVTON Space and falls back if one host errors. An HF token raises rate limits."
+        ),
+        "best_for": "Offloading CatVTON when you want the original model in the cloud",
+        "trained_on": "Public CatVTON Space (ZeroGPU)",
+        "mask_note": "Space auto-masks from garment type",
+        "vram_gb": 0,
+        "vram_label": "cloud",
+        "weight_label": "huggingface-space",
+        "foot": "Hugging Face Space · optional hf_ token",
+        "backend": "hf-space",
+        "default_guidance": 2.5,
+        "access": "open",
+        "access_short": "optional token",
+        "access_label": "Public Space · optional HF token",
+        "license_label": "CC BY-NC-SA 4.0",
+        "access_note": (
+            "Works without a token on a public Space. For fewer queues, paste a token from "
+            "huggingface.co/settings/tokens. Same token unlocks gated FLUX downloads."
         ),
     },
     "catvton-flux": {
@@ -328,6 +407,53 @@ def is_flux(spec: dict) -> bool:
     return str(spec.get("backend", "sd15")).startswith("flux")
 
 
+def is_p2p(spec: dict) -> bool:
+    return str(spec.get("backend", "")) == "sd15-p2p"
+
+
+def is_gemini(spec: dict) -> bool:
+    return str(spec.get("backend", "")) == "gemini"
+
+
+def is_hf_space(spec: dict) -> bool:
+    return str(spec.get("backend", "")) == "hf-space"
+
+
+def is_cloud(spec: dict) -> bool:
+    return is_gemini(spec) or is_hf_space(spec)
+
+
+def load_secrets() -> dict:
+    data: dict[str, str] = {}
+    if SECRETS_PATH.exists():
+        try:
+            raw = json.loads(SECRETS_PATH.read_text(encoding="utf-8"))
+            if isinstance(raw, dict):
+                data = {str(key): str(value) for key, value in raw.items() if value}
+        except Exception:
+            data = {}
+    data.setdefault(
+        "gemini_api_key",
+        os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or "",
+    )
+    data.setdefault(
+        "hf_token",
+        os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_HUB_TOKEN") or "",
+    )
+    return data
+
+
+def save_secrets(gemini_api_key: str | None = None, hf_token: str | None = None) -> None:
+    data = load_secrets()
+    if gemini_api_key and gemini_api_key.strip():
+        data["gemini_api_key"] = gemini_api_key.strip()
+    if hf_token and hf_token.strip():
+        data["hf_token"] = hf_token.strip()
+    payload = {key: value for key, value in data.items() if value}
+    if payload:
+        SECRETS_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
 def attn_local_root(spec: dict) -> Path:
     return WEIGHTS_DIR / "local" / spec["local_dir"]
 
@@ -425,6 +551,13 @@ HF_CACHE = Path(os.environ.get("HF_HOME", WEIGHTS_DIR / "hf"))
 
 # hf-xet often stalls on Windows; force the classic HTTP downloader.
 os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
+
+# Diffusers 0.40 still forwards this removed Hugging Face argument.
+warnings.filterwarnings(
+    "ignore",
+    message=r"The `local_dir_use_symlinks` argument is deprecated and ignored.*",
+    category=UserWarning,
+)
 
 
 def ensure_dirs() -> None:

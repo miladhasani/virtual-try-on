@@ -41,11 +41,25 @@ class JobState:
     total: int = 0
     started_at: Optional[float] = None
     message: str = "Ready"
+    error: Optional[str] = None
 
     def elapsed_label(self) -> str:
         if self.started_at is None:
             return "—"
         seconds = max(0, int(time.time() - self.started_at))
+        return f"{seconds // 60:02d}:{seconds % 60:02d}"
+
+    def percent(self) -> float:
+        if self.total <= 0:
+            return 0.0
+        return max(0.0, min(100.0, self.step / self.total * 100.0))
+
+    def eta_label(self) -> str:
+        if self.started_at is None or self.step <= 0 or self.total <= self.step:
+            return ""
+        elapsed = max(0.0, time.time() - self.started_at)
+        remaining = elapsed / self.step * (self.total - self.step)
+        seconds = max(0, int(remaining))
         return f"{seconds // 60:02d}:{seconds % 60:02d}"
 
 

@@ -2,7 +2,7 @@
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="utf-8" />
-  <title>گزارش مدل‌های Atelier</title>
+  <title>مدل‌های Virtual Try-On</title>
   <style>
     @page { size: A4; margin: 16mm 14mm; }
     * { box-sizing: border-box; }
@@ -51,6 +51,12 @@
       gap: 10px;
       margin: 12px 0;
     }
+    .grid3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin: 12px 0;
+    }
     .card {
       border: 1px solid #e2e2e2;
       padding: 10px 12px;
@@ -79,6 +85,7 @@
     .bar-fill { height: 100%; background: #555; }
     .bar-val { width: 72px; font-size: 8.5pt; color: #444; flex-shrink: 0; }
     .small { font-size: 9.5pt; color: #444; }
+    .mono { font-family: Consolas, "Courier New", monospace; font-size: 9pt; }
     a { color: #1a1a1a; }
     ol.refs { padding-right: 22px; font-size: 9.5pt; }
     ol.refs li { margin-bottom: 8px; }
@@ -87,143 +94,156 @@
       a { text-decoration: none; }
       .card, .callout, table, .bar-wrap { break-inside: avoid; }
     }
+    @media screen and (max-width: 900px) {
+      .grid3 { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: 1fr 1fr; }
+    }
   </style>
 </head>
 <body>
-  <h1>گزارش مدل‌های Atelier</h1>
+  <h1>مدل‌های Virtual Try-On</h1>
   <p class="author">میلاد حسنی</p>
   <p class="lede">
-    این گزارش پروژهٔ Atelier است. نوشتمش تا روشن باشد چرا این هفت وزن را
-    گذاشتم، هر کدام روی چه لباسی بهتر است، و از لپ‌تاپ RTX 4070 هشت‌گیگی‌ام چه
-    انتظاری دارم. نسخهٔ یک فقط استنتاج است؛ آموزش مجدد را عمداً نگذاشتم. اگر
-    کارت محلی کم بیاید، روی Hugging Face هم می‌شود اجرا کرد.
+    Virtual Try-On را روی لپ‌تاپ خودم ساختم، RTX 4070 با هشت گیگ. خواستم بگویم هر گزینه
+    را برای چه گذاشته‌ام، روی چه لباسی بهتر جواب می‌دهد، و از این کارت چه
+    برمی‌آید. آموزش دوباره در کار نبود؛ فقط اجرا. هفت وزن همین‌جا بار می‌شوند.
+    Gemini و Space هاگینگ‌فیس را برای وقتی گذاشتم که GPU پر است یا برای FLUX کم
+    می‌آید — همان عکس شخص و لباس می‌روند بیرون و وزن سنگین روی لپ‌تاپ نمی‌نشیند.
   </p>
 
   <div class="stats">
-    <div class="stat"><strong>۷</strong><span>وزن قابل انتخاب در منو</span></div>
-    <div class="stat"><strong>۸ گیگ</strong><span>کلاس VRAM خانواده SD 1.5</span></div>
-    <div class="stat"><strong>۲۴ گیگ+</strong><span>کلاس بومی FLUX</span></div>
-    <div class="stat"><strong>۵٫۴۲۵</strong><span>بهترین FID زوجی مقاله روی VITON-HD</span></div>
+    <div class="stat"><strong>۹</strong><span>گزینه در منو · ۷ وزن محلی + ۲ ابری</span></div>
+    <div class="stat"><strong>۸ گیگ</strong><span>SD روی همین کارت جا می‌شود</span></div>
+    <div class="stat"><strong>ابر</strong><span>Gemini با کلید · CatVTON روی HF Space</span></div>
+    <div class="stat"><strong>۵٫۴۲۵</strong><span>بهترین FID مقاله روی VITON-HD</span></div>
   </div>
 
-  <h2>چطور Atelier را چیدم</h2>
+  <h2>چطور چیدمش</h2>
   <div class="callout">
-    <b>وقتی می‌گویم چک‌پوینت</b>
-    منظورم یک فایل وزن ذخیره‌شده است؛ همان اعدادی که شبکه بعد از آموزش یاد
-    گرفته. مقالهٔ ICLR معمولاً می‌گوید pretrained model یا weights. مخزن
-    CatVTON و Hugging Face همان فایل را checkpoint می‌نامند. در منو هفت گزینه
-    دارم، ولی هفت معماری جدا نیست. چهار تای SD فقط آداپتور توجه را عوض می‌کنند.
-    سه تای FLUX وزن Fill یا LoRA را بار می‌کنند.
+    <b>چک‌پوینت یعنی چه</b>
+    همان فایل وزن است؛ اعدادی که شبکه یاد گرفته. مقاله می‌گوید weights،
+    هاگینگ‌فیس می‌گوید checkpoint. نه تا گزینه در منو هست، ولی نه تا شبکهٔ جدا
+    نیست. Mix و VITON-HD و DressCode یک UNet را شریک‌اند و فقط فایل توجه را عوض
+    می‌کنند — حدود ۱۹۸ مگ. Mask-Free جداست: UNet هشت‌کانالهٔ Pix2Pix. سه‌تا FLUX
+    وزن Fill یا LoRA می‌آورند. Gemini و Space اصلاً وزن محلی نمی‌گیرند.
   </div>
   <p>
-    مسیر همیشه یکی است. عکس شخص، عکس لباس، و نوع لباس — بالاتنه، پایین‌تنه یا
-    تمام‌قد. برای ماسک به‌جای DensePose و SCHP مقاله، SegFormer لباس را گذاشتم
-    تا روی ویندوز بدون Detectron2 نصب شود. بعد یکی از دو موتور دیفیوژن صدا زده
+    ورودی همیشه ساده‌ست: یک عکس از آدم، یک عکس از لباس، و اینکه بالاتنه می‌خواهم
+    یا پایین‌تنه یا کل استایل. عکس شخص را از وسط می‌برم روی بوم ۳:۴؛ لباس را با
+    حاشیهٔ سفید به همان اندازه می‌رسانم. مقاله برای ماسک DensePose و SCHP دارد؛
+    من SegFormer را گذاشتم تا روی ویندوز بدون Detectron2 بالا بیاید. بعد یکی از
+    این چهار تا صدا زده می‌شود: اینپینت SD، Pix2Pix، FLUX، یا ابر. اگر چیزی خراب
+    شود دیگر فقط توی ترمینال نمی‌ماند؛ نوار بالا قرمز می‌شود و همان متن را نشان
+    می‌دهد. وسط کار Generate قفل است و Stop فقط وقتی کاری در جریان است روشن
     می‌شود.
   </p>
-  <div class="grid2">
+  <div class="grid3">
     <div class="card">
-      <h3>خانواده SD 1.5 — ۴ آداپتور</h3>
+      <h3>SD 1.5 اینپینت — سه تا وزن توجه</h3>
       <p>
-        یک UNet اینپینت مشترک، حدود هشت گیگ. وقتی مدل را عوض می‌کنم فقط حدود
-        ۱۹۸ مگابایت وزن توجه جابه‌جا می‌شود. Guidance را ۲٫۵ گذاشتم. این
-        آداپتورها را بدون ورود Hugging Face می‌شود گرفت.
+        یک UNet مشترک، حدود هشت گیگ. مدل که عوض می‌شود فقط همان ۱۹۸ مگ توجه
+        جابه‌جا می‌شود. Guidance را ۲٫۵ گذاشتم. ورود Hugging Face نمی‌خواهد.
       </p>
-      <p class="small">Mix · VITON-HD · DressCode · Mask-Free</p>
+      <p class="small">Mix · VITON-HD · DressCode</p>
     </div>
     <div class="card">
-      <h3>خانواده FLUX — ورود HF</h3>
+      <h3>Mask-Free — Pix2Pix</h3>
       <p>
-        ستون فقرات gated مدل FLUX.1-Fill-dev. دو LoRA سبک و یک fine-tune کامل.
-        Guidance اینجا ۳۰ است. روی کارت کوچک Offload، Sequential یا ۴-بیت را
-        گذاشتم؛ کار می‌کند، ولی کندتر از حالت GPU است.
+        UNet هشت‌کاناله، نه اینپینت. شخص و لباس کنار هم می‌نشینند. Guidance همان
+        ۲٫۵. ماسک به شبکه نمی‌رود؛ اگر Top باشد بعداً شلوار و صورت را از عکس اصلی
+        برمی‌گردانم.
       </p>
-      <p class="small">FLUX رسمی · Alpha · Beta</p>
+      <p class="small">catvton-maskfree · ۸ کانال</p>
+    </div>
+    <div class="card">
+      <h3>FLUX و ابر</h3>
+      <p>
+        FLUX.1-Fill-dev gated است و Guidanceاش ۳۰. روی کارت کوچک Offload یا ۴-بیت
+        می‌رود، ولی کند. Gemini با کلید AI Studio و Space عمومی CatVTON روی
+        ZeroGPU هیچ وزنی روی لپ‌تاپ بار نمی‌کنند.
+      </p>
+      <p class="small">FLUX · Alpha · Beta · Gemini · HF Space</p>
     </div>
   </div>
   <p>
-    کیفیت را با پیش‌تنظیم عوض می‌کنم: Tiny برابر ۲۵۶×۳۸۴ و ۱۶ گام، Fast برابر
-    ۳۸۴×۵۱۲ و ۲۰ گام، Balanced برابر ۵۷۶×۷۶۸ و ۳۰ گام، Quality برابر ۷۶۸×۱۰۲۴
-    و ۵۰ گام، Studio برابر ۱۰۲۴×۱۲۸۰ و ۳۶ گام. اگر VRAM را روی Auto بگذارم و
-    کارت از ۲۴ گیگ کوچک‌تر باشد، FLUX خودش به Offload یا ۴-بیت می‌رود.
+    کیفیت را از منو عوض می‌کنم. Tiny می‌شود ۲۵۶×۳۸۴ و ۱۶ گام، Fast ۳۸۴×۵۱۲ و ۲۰
+    گام، Balanced — همان که روزمره باهاش کار می‌کنم — ۵۷۶×۷۶۸ و ۳۰ گام. Quality
+    ۷۶۸×۱۰۲۴ و ۵۰ گام است، Studio ۱۰۲۴×۱۲۸۰ و ۳۶ گام. اگر VRAM روی Auto باشد و
+    کارت از ۲۴ گیگ کوچک‌تر، FLUX خودش Offload یا ۴-بیت می‌شود.
   </p>
 
-  <h2>این چهار عدد را چطور می‌خوانم</h2>
+  <h2>این چهار عدد یعنی چه</h2>
   <p>
-    مقالهٔ CatVTON چهار معیار می‌دهد. دو تای اول یک جفت تصویر را با هم
-    می‌سنجند — خروجی در برابر عکس واقعی همان شخص با همان لباس. دو تای بعدی کل
-    مجموعهٔ خروجی را با کل مجموعهٔ واقعی مقایسه می‌کنند و برای تست غیرزوجی هم
-    به کار می‌آیند.
+    مقاله چهار تا عدد می‌دهد. دوتای اول یک جفت عکس را با هم می‌سنجند: خروجی من
+    کنار عکس واقعی همان آدم با همان لباس. دوتای بعدی کل خروجی‌ها را با کل
+    عکس‌های واقعی مقایسه می‌کنند، حتی وقتی جفت دقیق نداری.
   </p>
   <table>
     <thead>
-      <tr><th>معیار</th><th>چه چیزی را می‌سنجد</th><th>بهتر بودن</th><th>واحد تقریبی</th><th>ضعف</th></tr>
+      <tr><th>معیار</th><th>چه می‌گوید</th><th>بهتر بودن</th><th>بازه</th><th>کجا گول می‌زند</th></tr>
     </thead>
     <tbody>
-      <tr><td>SSIM</td><td>شباهت ساختاری پیکسلی: روشنایی، کنتراست، لبه</td><td>بیشتر (نزدیک ۱)</td><td>۰ تا ۱</td><td>تصویر تار ولی تراز را گاهی بهتر از تصویر تیز جابه‌جاشده می‌داند</td></tr>
-      <tr><td>LPIPS</td><td>شباهت ادراکی در فضای ویژگی شبکهٔ عمیق</td><td>کمتر</td><td>معمولاً ۰٫۰۴ تا ۰٫۲۰</td><td>به شبکهٔ ویژگی وابسته است؛ چهره را جدا پاداش نمی‌دهد</td></tr>
-      <tr><td>FID</td><td>فاصلهٔ دو توزیع تصویر در فضای Inception</td><td>کمتر</td><td>بدون واحد؛ حدود ۳ تا ۱۵ در این جداول</td><td>به تعداد نمونه و کد ارزیابی حساس است</td></tr>
-      <tr><td>KID</td><td>همان ایده با هسته؛ بدون فرض گاوسی</td><td>کمتر</td><td>بدون واحد؛ روی مجموعهٔ کوچک پایدارتر از FID</td><td>هنوز به فضای Inception وابسته است</td></tr>
+      <tr><td>SSIM</td><td>پنجره‌به‌پنجره چقدر شبیه عکس واقعی است</td><td>بیشتر، نزدیک ۱</td><td>۰ تا ۱</td><td>عکس تار ولی تراز را گاهی بهتر از عکس تیزِ کمی جابه‌جا می‌داند</td></tr>
+      <tr><td>LPIPS</td><td>چشم شبکه چقدر فرق حس می‌کند</td><td>کمتر</td><td>معمولاً ۰٫۰۴ تا ۰٫۲۰</td><td>به همان شبکه وابسته است؛ صورت را جدا امتیاز نمی‌دهد</td></tr>
+      <tr><td>FID</td><td>کل خروجی‌ها چقدر شبیه عکس‌های واقعی‌اند</td><td>کمتر</td><td>بدون واحد؛ اینجا حدود ۳ تا ۱۵</td><td>با عوض شدن کد یا تعداد عکس، عدد جابه‌جا می‌شود</td></tr>
+      <tr><td>KID</td><td>همان ایده، روی مجموعهٔ کوچک آرام‌تر</td><td>کمتر</td><td>بدون واحد</td><td>باز هم از همان فضای Inception می‌آید</td></tr>
     </tbody>
   </table>
 
-  <h3>SSIM — Structural Similarity Index</h3>
+  <h3>SSIM</h3>
   <p>
-    تصویر ساخته‌شده را پنجره‌به‌پنجره با عکس واقعی می‌سنجد: روشنایی محلی،
-    کنتراست و لبه چقدر یکی است. خروجی بین صفر و یک است. در try-on زوجی، SSIM
-    بالا برای من یعنی صورت، مو، پس‌زمینه و شبح بدن سر جایش مانده — نه اینکه
-    لباس لزوماً قشنگ‌تر شده. در جدول مقاله، CatVTON اینپینت روی VITON-HD به
-    ۰٫۸۷۰۴ می‌رسد. ساختار کلی خیلی نزدیک است؛ دو تصویر یکی نیستند.
+    پنجره‌به‌پنجره با عکس واقعی مقایسه می‌کند: روشنایی، کنتراست، لبه. عدد بین صفر
+    و یک است. برای من SSIM بالا یعنی صورت و مو و پس‌زمینه سر جایش مانده، نه لزوماً
+    اینکه لباس قشنگ‌تر شده. در جدول مقاله اینپینت CatVTON روی VITON-HD به ۰٫۸۷۰۴
+    می‌رسد — نزدیک است، یکی نیست.
   </p>
-  <h3>LPIPS — Learned Perceptual Image Patch Similarity</h3>
+  <h3>LPIPS</h3>
   <p>
-    اینجا دیگر پیکسل خام ملاک نیست. تکه‌های تصویر از یک شبکهٔ ازپیش‌آموزش‌دیده
-    — معمولاً VGG یا AlexNet — رد می‌شوند و فاصلهٔ ویژگی حساب می‌شود. چشم به
-    بافت و چین حساس‌تر از اختلاف RGB است؛ LPIPS همان را تقریب می‌زند. کمتر
-    بهتر است. اگر لباس درست بنشیند ولی رنگ یا بافت کمی فرق کند، LPIPS بیشتر از
-    SSIM جریمه می‌کند. عدد اینپینت روی VITON-HD برابر ۰٫۰۵۶۵ است.
+    دیگر پیکسل خام نیست. تکه‌های عکس از یک شبکه مثل VGG رد می‌شوند و فاصله‌شان
+    حساب می‌شود. چشم به بافت و چین بیشتر از اختلاف RGB گیر می‌دهد؛ این همان را
+    تقریب می‌زند. کمتر بهتر است. اگر لباس درست بنشیند ولی رنگ کمی فرق کند، LPIPS
+    بیشتر از SSIM شکایت می‌کند. عدد اینپینت روی VITON-HD ۰٫۰۵۶۵ است.
   </p>
-  <h3>FID — Fréchet Inception Distance</h3>
+  <h3>FID</h3>
   <p>
-    این یکی برای یک جفت عکس نیست. همهٔ تصاویر واقعی و همهٔ خروجی‌ها با
-    Inception به بردار تبدیل می‌شوند، برای هر مجموعه میانگین و کوواریانس گرفته
-    می‌شود، و فاصلهٔ فرشه بین دو گاوسی حساب می‌شود. FID پایین یعنی توزیع خروجی
-    به عکس‌های واقعی شبیه است. ضعفش این است که کد ارزیابی و تعداد نمونه عدد را
-    جابه‌جا می‌کند. برای همین FIDهایی که جامعه برای FLUX گذاشته را با جدول
-    مقاله قاطی نمی‌کنم.
+    این یکی برای یک جفت عکس نیست. همهٔ عکس‌های واقعی و همهٔ خروجی‌ها می‌روند توی
+    Inception، از هر دسته میانگین گرفته می‌شود، و می‌بینند دو توده چقدر از هم
+    دورند. FID پایین یعنی خروجی‌ها شبیه عکس واقعی‌اند. مشکلش این است که با عوض
+    شدن کد یا تعداد عکس، عدد جابه‌جا می‌شود. برای همین FIDهایی که برای FLUX در
+    جامعه دیده‌ام را با جدول مقاله قاطی نمی‌کنم.
   </p>
-  <h3>KID — Kernel Inception Distance</h3>
+  <h3>KID</h3>
   <p>
-    همان فضای Inception، ولی به‌جای فرض گاوسی از یک هسته (MMD) استفاده می‌کند.
-    روی چند هزار تصویر از FID پایدارتر است. مقاله هر دو را می‌دهد چون FID در
-    ادبیات جا افتاده و KID برای این دیتاست‌ها قابل‌اعتمادتر است. روی VITON-HD
-    زوجی، CatVTON به ۰٫۴۱۱ می‌رسد و OOTDiffusion به ۴٫۰۸۶.
+    همان فضا، بدون آن فرض آماریِ FID. روی چند هزار عکس معمولاً آرام‌تر است.
+    مقاله هر دو را می‌دهد چون FID را همه می‌شناسند و KID روی این مجموعه‌ها کمتر
+    می‌پرد. روی VITON-HD زوجی، CatVTON به ۰٫۴۱۱ می‌رسد و OOTDiffusion به ۴٫۰۸۶.
   </p>
 
   <h2>قبل از مدل چه کار می‌کنم</h2>
-  <p>هر هفت وزن از یک ورودی یکسان شروع می‌شوند. اختلاف فقط از مرحلهٔ دیفیوژن به بعد است.</p>
+  <p>هر نه تا از همان شخص و لباس و نوع لباس شروع می‌شوند. از اینجا به بعد راهشان جدا می‌شود.</p>
   <table>
     <thead><tr><th>گام</th><th>چه می‌کند</th><th>کجا در کد</th></tr></thead>
     <tbody>
-      <tr><td>۱. بوم</td><td>شخص را برش می‌دهم؛ لباس را با پد به همان اندازه می‌رسانم</td><td>resize_and_crop / padding</td></tr>
-      <tr><td>۲. پارس بدن</td><td>SegFormer لباس ۱۸ بخش می‌چسباند: صورت، لباس بالا، شلوار، دست</td><td>ClothMasker روی CPU</td></tr>
-      <tr><td>۳. ماسک آگنوستیک</td><td>بسته به upper / lower / overall ناحیهٔ لباس گشاد می‌شود؛ صورت و مو را نگه می‌دارم</td><td>build_agnostic_mask</td></tr>
-      <tr><td>۴. نرم‌کردن لبه</td><td>ماسک را محو می‌کنم تا مرز لباس پاره نشود</td><td>blur_mask</td></tr>
-      <tr><td>۵. دیفیوژن</td><td>SD 1.5 یا FLUX ناحیهٔ ماسک‌شده را با شرط لباس از نو می‌سازد</td><td>CatVTONPipeline یا FluxFill</td></tr>
+      <tr><td>۱. بوم</td><td>عکس آدم را از وسط می‌برم؛ لباس را با حاشیهٔ سفید هم‌اندازه می‌کنم</td><td>resize_and_crop / padding</td></tr>
+      <tr><td>۲. پارس بدن</td><td>SegFormer لباس را به ۱۸ تکه می‌زند: صورت، لباس بالا، شلوار، دست. روی CPU می‌ماند تا GPU آزاد بماند</td><td>ClothMasker</td></tr>
+      <tr><td>۳. ماسک</td><td>برای Mix و بقیهٔ اینپینت‌ها، بسته به Top / Bottom / Full look ناحیه گشاد می‌شود و صورت و مو می‌مانند. Mask-Free این را به UNet نمی‌دهد</td><td>build_agnostic_mask</td></tr>
+      <tr><td>۴. لبه</td><td>ماسک اینپینت را کمی محو می‌کنم تا مرز لباس پاره نشود</td><td>blur_mask</td></tr>
+      <tr><td>۵. ساخت</td><td>اینپینت SD، Pix2Pix، FLUX، Gemini، یا Space هاگینگ‌فیس</td><td>catvton / flux_tryon / cloud</td></tr>
+      <tr><td>۶. قفل</td><td>در Mask-Free اگر Top باشد شلوار و پا و کفش و صورت را از عکس اصلی برمی‌گردانم</td><td>composite_tryon</td></tr>
     </tbody>
   </table>
   <p class="small">
-    مقاله برای همین ماسک DensePose و SCHP دارد. من SegFormer را جایگزین کردم تا
-    نصب ویندوز ساده بماند. Mask-Free را برای وقتی گذاشتم که لبهٔ ماسک روی بند و
-    چاپ شلوغ ضعیف می‌شود.
+    مقاله DensePose و SCHP دارد. من SegFormer را گذاشتم چون نصب ویندوز ساده‌تر شد.
+    Mask-Free را برای وقتی گذاشتم که ماسک روی بند و چاپ شلوغ گیر می‌کند — با UNet
+    درست Pix2Pix، نه اینپینت نه‌کاناله.
   </p>
 
-  <h2>اعداد مقالهٔ CatVTON</h2>
+  <h2>اعداد مقاله</h2>
   <div class="callout">
-    <b>چطور این جدول‌ها را می‌خوانم</b>
-    FID و KID هرچه کمتر بهتر. SSIM هرچه بیشتر بهتر. LPIPS هرچه کمتر بهتر.
-    زوجی یعنی عکس مرجع وجود دارد. غیرزوجی فقط توزیع را می‌سنجد. اعداد FLUX
-    جامعه را جدا نگه داشتم چون با همین پروتکل گرفته نشده‌اند.
+    <b>فقط این را نگه دار</b>
+    FID و KID هرچه کمتر بهتر. SSIM هرچه بیشتر بهتر. LPIPS هرچه کمتر بهتر. زوجی
+    یعنی عکس مرجع هست. غیرزوجی فقط می‌گوید خروجی‌ها شبیه عکس‌های واقعی‌اند.
+    عددهای FLUX جامعه را جدا نگه داشتم؛ با همین روش مقاله گرفته نشده‌اند.
   </div>
 
   <h3>FID زوجی روی VITON-HD — کمتر بهتر است</h3>
@@ -233,28 +253,28 @@
     <div class="bar-row"><div class="bar-lab">Mask-Free</div><div class="bar-track"><div class="bar-fill" style="width:49%"></div></div><div class="bar-val">۵٫۸۸۸</div></div>
     <div class="bar-row"><div class="bar-lab">OOTDiffusion</div><div class="bar-track"><div class="bar-fill" style="width:78%"></div></div><div class="bar-val">۹٫۳۰۵</div></div>
   </div>
-  <p class="caption">منبع: Chong و همکاران، ICLR 2025، جدول ۱، تنظیم زوجی VITON-HD. محور مقدار FID است؛ واحد ندارد.</p>
+  <p class="caption">جدول ۱ مقاله، VITON-HD زوجی. FID واحد ندارد؛ کمتر بهتر است.</p>
 
-  <h3>زمان استنتاج مقاله در ۱۰۲۴×۷۶۸ — ثانیه</h3>
+  <h3>زمان مقاله در ۱۰۲۴×۷۶۸</h3>
   <div class="bar-wrap">
     <div class="bar-row"><div class="bar-lab">CatVTON</div><div class="bar-track"><div class="bar-fill" style="width:26%"></div></div><div class="bar-val">۹٫۲۵ ثانیه</div></div>
     <div class="bar-row"><div class="bar-lab">IDM-VTON</div><div class="bar-track"><div class="bar-fill" style="width:48%"></div></div><div class="bar-val">۱۷٫۳۲ ثانیه</div></div>
     <div class="bar-row"><div class="bar-lab">StableVTON</div><div class="bar-track"><div class="bar-fill" style="width:99%"></div></div><div class="bar-val">۳۶٫۱۰ ثانیه</div></div>
     <div class="bar-row"><div class="bar-lab">OOTDiffusion</div><div class="bar-track"><div class="bar-fill" style="width:100%"></div></div><div class="bar-val">۳۶٫۲۳ ثانیه</div></div>
   </div>
-  <p class="caption">منبع: جدول ۲ همان مقاله. سخت‌افزار دیتاسنتر است، نه لپ‌تاپ من.</p>
+  <p class="caption">جدول ۲ همان مقاله. روی کارت دیتاسنتر گرفته‌اند، نه لپ‌تاپ من.</p>
 
-  <h3>حافظهٔ استنتاج — گیگابایت</h3>
+  <h3>حافظه — گیگابایت</h3>
   <div class="bar-wrap">
     <div class="bar-row"><div class="bar-lab">CatVTON مقاله</div><div class="bar-track"><div class="bar-fill" style="width:15%"></div></div><div class="bar-val">۴٫۰ گیگ</div></div>
-    <div class="bar-row"><div class="bar-lab">Atelier Balanced</div><div class="bar-track"><div class="bar-fill" style="width:23%"></div></div><div class="bar-val">۵٫۹ گیگ</div></div>
+    <div class="bar-row"><div class="bar-lab">Try-on Balanced</div><div class="bar-track"><div class="bar-fill" style="width:23%"></div></div><div class="bar-val">۵٫۹ گیگ</div></div>
     <div class="bar-row"><div class="bar-lab">OOTDiffusion</div><div class="bar-track"><div class="bar-fill" style="width:39%"></div></div><div class="bar-val">۱۰٫۲ گیگ</div></div>
     <div class="bar-row"><div class="bar-lab">FLUX بومی</div><div class="bar-track"><div class="bar-fill" style="width:92%"></div></div><div class="bar-val">۲۴ گیگ</div></div>
     <div class="bar-row"><div class="bar-lab">IDM-VTON</div><div class="bar-track"><div class="bar-fill" style="width:100%"></div></div><div class="bar-val">۲۶٫۰۴ گیگ</div></div>
   </div>
-  <p class="caption">جدول ۳ مقاله به‌علاوهٔ اندازه‌گیری Balanced روی لپ‌تاپم.</p>
+  <p class="caption">جدول ۳ مقاله، به‌علاوهٔ Balanced روی لپ‌تاپ خودم.</p>
 
-  <h2>جدول کامل مقاله روی VITON-HD</h2>
+  <h2>جدول مقاله روی VITON-HD</h2>
   <table>
     <thead>
       <tr><th>روش</th><th>SSIM ↑</th><th>FID زوجی ↓</th><th>KID زوجی ↓</th><th>LPIPS ↓</th><th>FID غیرزوجی ↓</th><th>KID غیرزوجی ↓</th></tr>
@@ -270,7 +290,7 @@
     </tbody>
   </table>
 
-  <h2>جدول کامل مقاله روی DressCode</h2>
+  <h2>جدول مقاله روی DressCode</h2>
   <table>
     <thead>
       <tr><th>روش</th><th>SSIM ↑</th><th>FID زوجی ↓</th><th>KID زوجی ↓</th><th>LPIPS ↓</th><th>FID غیرزوجی ↓</th><th>KID غیرزوجی ↓</th></tr>
@@ -285,15 +305,14 @@
     </tbody>
   </table>
   <p class="small">
-    وزن DressCode مقاله فقط روی DressCode آموزش دیده. Mix را که من پیش‌فرض
-    گذاشتم روی حدود ۴۸ هزار جفت ترکیبی در ۱۰۲۴ پیکسل آموزش دیده و جدول رسمی
-    جداگانه‌ای در مقاله ندارد.
+    وزن DressCode مقاله فقط روی DressCode یاد گرفته. Mix که من پیش‌فرض گذاشتم
+    روی حدود ۴۸ هزار جفت قاطی در ۱۰۲۴ پیکسل یاد گرفته و جدول جدا در مقاله ندارد.
   </p>
 
-  <h2>سبکی معماری در مقاله</h2>
+  <h2>چرا سبک است</h2>
   <table>
     <thead>
-      <tr><th>روش</th><th>پارامتر کل (میلیون)</th><th>قابل آموزش (میلیون)</th><th>حافظه (گیگ)</th><th>زمان ۵۱۲×۳۸۴</th><th>زمان ۱۰۲۴×۷۶۸</th></tr>
+      <tr><th>روش</th><th>کل پارامتر (میلیون)</th><th>آن‌چه یاد گرفته (میلیون)</th><th>حافظه (گیگ)</th><th>زمان ۵۱۲×۳۸۴</th><th>زمان ۱۰۲۴×۷۶۸</th></tr>
     </thead>
     <tbody>
       <tr><td>CatVTON</td><td>۸۹۹</td><td>۴۹٫۵۷</td><td>۴٫۰۰</td><td>۲٫۵۸ ثانیه</td><td>۹٫۲۵ ثانیه</td></tr>
@@ -302,21 +321,21 @@
       <tr><td>IDM-VTON</td><td>۶۲۳۸</td><td>۲۸۷۱</td><td>۲۶٫۰۴</td><td>۱۲٫۹۶ ثانیه</td><td>۱۷٫۳۲ ثانیه</td></tr>
     </tbody>
   </table>
-  <p class="caption">جداول ۲ و ۳. CatVTON انکودر متن و ReferenceNet را برداشته و فقط self-attention را آموزش داده است.</p>
+  <p class="caption">جداول ۲ و ۳. CatVTON انکودر متن و ReferenceNet را برداشته و فقط self-attention را یاد داده.</p>
 
-  <h2>اعداد جامعهٔ FLUX — پروتکل جدا</h2>
+  <h2>عددهای FLUX جامعه — داستان جدا</h2>
   <div class="callout warn">
     <b>این‌ها را با جدول بالا جمع نمی‌زنم</b>
-    نویسندهٔ جامعه این FIDها را با مقیاس ۳۰ و ۳۰ گام روی VITON-HD گزارش کرده.
-    پیش‌پردازش ماسک، رزولوشن و کد ارزیابی با مقاله یکی اعلام نشده.
+    نویسنده‌شان FID را با مقیاس ۳۰ و ۳۰ گام روی VITON-HD گفته. ماسک و اندازهٔ عکس
+    و کد تست با مقاله یکی اعلام نشده.
   </div>
   <table>
-    <thead><tr><th>وزن</th><th>نوع</th><th>دادهٔ آموزش</th><th>FID اعلام‌شده</th><th>پیکربندی تست</th></tr></thead>
+    <thead><tr><th>وزن</th><th>نوع</th><th>روی چه یاد گرفته</th><th>FID گفته‌شده</th><th>تست</th></tr></thead>
     <tbody>
       <tr><td>FLUX Alpha کامل</td><td>fine-tune ترنسفورمر</td><td>فقط VITON-HD</td><td>۵٫۵۹۳</td><td>مقیاس ۳۰ · ۳۰ گام</td></tr>
       <tr><td>FLUX LoRA Alpha</td><td>LoRA روی Fill</td><td>فقط VITON-HD</td><td>۶٫۰۶۸</td><td>مقیاس ۳۰ · ۳۰ گام</td></tr>
-      <tr><td>FLUX رسمی CatVTON</td><td>LoRA نویسنده · ۳۷ مگ</td><td>اعلام نشده در مقاله</td><td>منتشر نشده</td><td>Guidance ۳۰ در Atelier</td></tr>
-      <tr><td>FLUX Beta</td><td>fine-tune کامل حدود ۲۳٫۸ گیگ</td><td>تنوع لباس بیشتر</td><td>منتشر نشده</td><td>Guidance ۳۰ در Atelier</td></tr>
+      <tr><td>FLUX نویسنده‌ها</td><td>LoRA نویسنده · ۳۷ مگ</td><td>در مقاله نیامده</td><td>منتشر نشده</td><td>Guidance ۳۰ در Virtual Try-On</td></tr>
+      <tr><td>FLUX Beta</td><td>fine-tune کامل حدود ۲۳٫۸ گیگ</td><td>تنوع لباس بیشتر</td><td>منتشر نشده</td><td>Guidance ۳۰ در Virtual Try-On</td></tr>
     </tbody>
   </table>
 
@@ -327,65 +346,86 @@
   </div>
   <p class="caption">با Mix روی RTX 4070 Laptop هشت گیگ، سپتامبر ۲۰۲۶. VRAM حدود ۵٫۹ از ۸٫۰ گیگ. Quality و Studio و FLUX بومی را روی این کارت زمان نگرفته‌ام.</p>
 
-  <h2>هر مدل را چرا گذاشتم</h2>
+  <h2>چرا این‌ها را گذاشتم</h2>
 
-  <h3>Mix — پیش‌فرض روزمره</h3>
+  <h3>Mix — همان که هر روز می‌زنم</h3>
   <p>
-    VAE شخص ماسک‌شده و لباس را جدا به latent می‌برد. این دو از جهت ارتفاع به هم
-    می‌چسبند. UNet اینپینت SD 1.5 با DDIM نویز را کم می‌کند. چیزی که Mix را Mix
-    می‌کند فقط وزن self-attention است: حدود ۴۹٫۵۷ میلیون پارامتر، آموزش‌دیده روی
-    ۴۸ هزار جفت ترکیبی در ۱۰۲۴ پیکسل. این را پیش‌فرض گذاشتم چون بالاپوش، شلوار
-    و ست را پوشش می‌دهد و روی لپ‌تاپم در Balanced پایدار مانده. چاپ و بافت از
-    FLUX عقب‌تر است.
+    روزمره سراغ Mix می‌روم. همان اینپینت SD است؛ فرقش این است که توجه‌اش روی
+    حدود ۴۸ هزار جفت قاطی در ۱۰۲۴ پیکسل یاد گرفته، هم بالاپوش هم شلوار. روی
+    لپ‌تاپم در Balanced پایدار مانده و login نمی‌خواهد. چاپ و بافت هنوز از FLUX
+    عقب است.
   </p>
   <p class="small">شناسه catvton-mix · zhengchong/CatVTON · mix-48k-1024 · Guidance 2.5</p>
 
   <h3>VITON-HD — پیراهن و کت</h3>
   <p>
-    همان موتور Mix؛ فقط فایل attention عوض می‌شود. روی حدود ۱۶ هزار جفت بالاتنه
-    در ۵۱۲ پیکسل آموزش دیده. برای کاتالوگ بالاتنه نگهش داشتم. تنوع دسته کم است.
+    موتورش همان Mix است؛ فقط فایل توجه عوض می‌شود. روی پیراهن و کت یاد گرفته.
+    برای کاتالوگ بالاتنه نگهش داشتم. اگر شلوار یا ست کامل بخواهم سراغش نمی‌روم.
   </p>
   <p class="small">شناسه catvton-vitonhd · vitonhd-16k-512</p>
 
   <h3>DressCode — پیراهن و تنوع</h3>
   <p>
-    آداپتور dresscode-16k-512 روی DressCode آموزش دیده. وقتی پیراهن شب یا ست
-    کامل می‌خواهم سراغ همین می‌روم. FID زوجی ۳٫۹۹۲ مقاله برای همین خانواده روی
-    DressCode است، نه برای Mix.
+    وقتی پیراهن شب یا ست کامل می‌خواهم این را برمی‌دارم. آن FID زوجی ۳٫۹۹۲ مقاله
+    مال همین خانواده روی DressCode است، نه مال Mix.
   </p>
   <p class="small">شناسه catvton-dresscode · dresscode-16k-512</p>
 
   <h3>Mask-Free — عکس‌های شلوغ</h3>
   <p>
-    در مقاله روی InstructPix2Pix آموزش دیده. در Atelier همان UNet اینپینت را بار
-    می‌کنم و فقط آداپتور توجه را از CatVTON-MaskFree می‌گیرم. وقتی ماسک پاره است
-    سراغش می‌روم. روی عکس تمیز انتظار ارتقای کیفیت ندارم.
+    این یکی ماسک را به شبکه نمی‌دهد. شخص و لباس کنار هم می‌نشینند و مدل خودش حدس
+    می‌زند کجا لباس عوض شود. اول اشتباهاً UNet اینپینت را بار کردم و لباس را کند،
+    نه اینکه بپوشاند. حالا Pix2Pix درست است. مشکل بعدی این بود که با Top گاهی
+    شلوار را هم عوض می‌کرد؛ برای همین بعد از ساخت شلوار و پا و کفش و صورت را از
+    عکس اصلی برمی‌گردانم. روی عکس تمیز از Mix بهتر نیست.
   </p>
-  <p class="small">شناسه catvton-maskfree · zhengchong/CatVTON-MaskFree</p>
+  <p class="small">شناسه catvton-maskfree · zhengchong/CatVTON-MaskFree · timbrooks/instruct-pix2pix</p>
 
-  <h3>FLUX رسمی — بیشترین وفاداری نویسنده</h3>
+  <h3>Gemini — ابر Google</h3>
   <p>
-    FluxFill یک ترنسفورمر بزرگ است. شخص و لباس را کنار هم می‌چسبانم. LoRA رسمی
-    حدود ۳۷ مگ است. Guidance را ۳۰ گذاشتم. نور و چین از SD بهتر است؛ روی هشت
-    گیگ فقط با Offload یا ۴-بیت و خیلی کند جلو می‌رود.
+    وزن محلی بار نمی‌شود. شخص و لباس می‌روند بیرون و یک عکس try-on برمی‌گردد.
+    کلید را از aistudio.google.com/apikey در فیلد UI می‌گذارم؛ روی همین ماشین در
+    <span class="mono">.secrets.json</span> می‌ماند و به git نمی‌رود. اول
+    gemini-3.1-flash-image را می‌زنم، اگر مدل نبود gemini-2.5-flash-image. وقتی
+    GPU مشغول است یا برای FLUX کوچک، این را برمی‌دارم. بدون کلید، بنر خطا همان
+    لینک AI Studio را نشان می‌دهد.
+  </p>
+  <p class="small">شناسه gemini-flash · کلید Google AI Studio · بدون VRAM محلی</p>
+
+  <h3>Hugging Face — Space عمومی CatVTON</h3>
+  <p>
+    همان ایدهٔ ابری، ولی موتور CatVTON است نه Gemini. Space نویسنده‌ها
+    zhengchong/CatVTON اغلب RUNTIME_ERROR است. زنده بودن را چک می‌کنم و سراغ
+    tryitonvirtual/virtual-tryon یا Nandha2017/virtual-tryon می‌روم — هر دو روی
+    ZeroGPU A10G. بدون توکن سهمیه کم است؛ یک بار ۱۸۰ ثانیه خواست و ۱۷۶ ثانیه
+    مانده بود. توکن hf_ از huggingface.co/settings/tokens سهمیه را بالا می‌برد
+    و همان توکن دانلود gated فلکس را هم باز می‌کند.
+  </p>
+  <p class="small">شناسه hf-catvton · ZeroGPU · توکن اختیاری</p>
+
+  <h3>FLUX نویسنده‌ها — نور و چین</h3>
+  <p>
+    LoRA خود نویسنده‌های CatVTON روی FluxFill، حدود ۳۷ مگ. Guidance را ۳۰ گذاشتم.
+    نور و چین از SD بهتر است؛ روی هشت گیگ فقط با Offload یا ۴-بیت جلو می‌رود و
+    کند است.
   </p>
   <p class="small">شناسه catvton-flux · Guidance 30 · concat person_first</p>
 
   <h3>FLUX Alpha — لوگو و بافت</h3>
   <p>
-    LoRA جامعه روی VITON-HD، ترتیب garment_first. وقتی لوگو و نوشته مهم است این
-    را برمی‌دارم. FID اعلامی LoRA ۶٫۰۶۸ است؛ پروتکل با مقاله یکی نیست.
+    LoRA جامعه روی VITON-HD. وقتی لوگو و نوشته روی پارچه مهم است این را برمی‌دارم.
+    یک FID ۶٫۰۶۸ گفته‌اند؛ با جدول مقاله قاطی‌اش نمی‌کنم.
   </p>
   <p class="small">شناسه catvton-flux-alpha · xiaozaa/catvton-flux-lora-alpha</p>
 
   <h3>FLUX Beta — تنوع لباس</h3>
   <p>
-    کل ترنسفورمر را با وزن fine-tune جامعه — حدود ۲۳٫۸ گیگ — عوض می‌کنم. تنوع
-    لباسش از Alpha بیشتر است. سنگین‌ترین دانلود را دارد.
+    کل ترنسفورمر را عوض می‌کند، حدود ۲۳٫۸ گیگ. تنوع لباسش از Alpha بیشتر است و
+    سنگین‌ترین دانلود را دارد.
   </p>
   <p class="small">شناسه catvton-flux-beta · xiaozaa/catvton-flux-beta</p>
 
-  <h3>جمع‌بندی عملی در Atelier</h3>
+  <h3>یک نگاه سریع</h3>
   <table>
     <thead>
       <tr><th>مدل</th><th>بهترین کاربرد</th><th>VRAM</th><th>ورود</th><th>ماسک</th><th>نقطهٔ قوت</th><th>نقطهٔ ضعف</th></tr>
@@ -394,8 +434,10 @@
       <tr><td>Mix</td><td>روزمره</td><td>۸ گیگ</td><td>لازم نیست</td><td>تمیز</td><td>تعادل پوشش</td><td>جزئیات کمتر از FLUX</td></tr>
       <tr><td>VITON-HD</td><td>بالاتنه</td><td>۸ گیگ</td><td>لازم نیست</td><td>تمیز</td><td>پیراهن و کت</td><td>لباس کامل ضعیف</td></tr>
       <tr><td>DressCode</td><td>پیراهن و ست</td><td>۸ گیگ</td><td>لازم نیست</td><td>تمیز</td><td>تنوع دسته</td><td>آموزش ۵۱۲ پیکسل</td></tr>
-      <tr><td>Mask-Free</td><td>عکس شلوغ</td><td>۸ گیگ</td><td>لازم نیست</td><td>تحمل خطا</td><td>ماسک خراب</td><td>ارتقای کیفیت نیست</td></tr>
-      <tr><td>FLUX</td><td>کیفیت بالا</td><td>۲۴ گیگ+</td><td>HF + لایسنس</td><td>ماسک + Fill</td><td>نور و پارچه</td><td>بدون FID رسمی</td></tr>
+      <tr><td>Mask-Free</td><td>عکس شلوغ</td><td>۸ گیگ</td><td>لازم نیست</td><td>Pix2Pix + قفل شلوار در Top</td><td>ماسک خراب</td><td>بدون قفل، پایین‌تنه را هم عوض می‌کند</td></tr>
+      <tr><td>Gemini</td><td>GPU مشغول یا کوچک</td><td>ابر</td><td>کلید AI Studio</td><td>بدون ماسک محلی</td><td>VRAM صفر</td><td>هزینه API · عکس به Google می‌رود</td></tr>
+      <tr><td>HF Space</td><td>CatVTON در ابر</td><td>ابر</td><td>توکن اختیاری</td><td>ماسک Space</td><td>بدون بار محلی</td><td>سهمیه ZeroGPU · Space نویسنده‌ها غالباً خراب است</td></tr>
+      <tr><td>FLUX</td><td>کیفیت بالا</td><td>۲۴ گیگ+</td><td>HF + لایسنس</td><td>ماسک + Fill</td><td>نور و پارچه</td><td>FID مقاله ندارد</td></tr>
       <tr><td>FLUX Alpha</td><td>لوگو و بافت</td><td>۲۴ گیگ+</td><td>HF + لایسنس</td><td>ماسک + Fill</td><td>چاپ کوچک</td><td>فقط بالاتنه</td></tr>
       <tr><td>FLUX Beta</td><td>تنوع لباس</td><td>۲۴ گیگ+</td><td>HF + لایسنس</td><td>ماسک + Fill</td><td>پوشش وسیع</td><td>سنگین‌ترین وزن</td></tr>
     </tbody>
@@ -405,79 +447,94 @@
   <div class="callout warn">
     <b>ویندوز و دانلود وزن</b>
     لایهٔ XET در Hugging Face روی ویندوز مدام گیر کرد. XET را خاموش کردم و یک
-    اسکریپت curl با ادامهٔ دانلود گذاشتم. UNet رسمی SD 1.5 هم gated است؛ اول یک
+    اسکریپت curl با ادامهٔ دانلود گذاشتم. UNet خود SD 1.5 هم gated است؛ اول یک
     آینهٔ عمومی را امتحان می‌کنم.
   </div>
   <div class="callout warn">
     <b>هشت گیگ در برابر FLUX</b>
     کارت من ۸ گیگ است. SD 1.5 در Balanced جا می‌شود. FLUX بومی ۲۴ گیگ می‌خواهد.
-    Offload و ۴-بیت اجرا را ممکن می‌کنند، ولی خیلی کند. برای همین فاصله Hugging
-    Face را هم گذاشتم.
+    Offload و ۴-بیت اجرا را ممکن می‌کنند، ولی خیلی کند. برای همین Gemini و Space
+    هاگینگ‌فیس را هم گذاشتم تا وزن سنگین روی این لپ‌تاپ ننشیند.
+  </div>
+  <div class="callout warn">
+    <b>Mask-Free بدون قفل شلوار</b>
+    Pix2Pix ماسک اینپینت ندارد. با Top، یک بار شلوار سوژه را هم عوض کرد. بعد از
+    ساخت، شلوار و پا و کفش و صورت را از عکس اصلی برمی‌گردانم. اگر پارس شلوار را
+    نبیند، قفل کامل نیست.
+  </div>
+  <div class="callout warn">
+    <b>سهمیهٔ ZeroGPU و کلید Gemini</b>
+    Space زنده است و صف و آپلود کار می‌کند، ولی بدون توکن hf_ سهمیهٔ مهمان کم
+    است. Gemini بدون کلید اصلاً نمی‌رود؛ متن خطا باید بالا دیده شود، نه فقط در
+    ترمینال. کلید و توکن را در .secrets.json می‌گذارم.
   </div>
   <div class="callout">
     <b>ماسک ساده‌تر از مقاله</b>
-    مقاله DensePose و SCHP دارد. من SegFormer را روی CPU گذاشتم تا GPU برای
-    دیفیوژن آزاد بماند. نصب راحت‌تر شد؛ لبهٔ ماسک ممکن است ضعیف‌تر باشد.
+    مقاله DensePose و SCHP دارد. من SegFormer را روی CPU گذاشتم تا GPU برای ساخت
+    آزاد بماند. نصب راحت‌تر شد؛ لبهٔ ماسک ممکن است ضعیف‌تر باشد.
   </div>
   <div class="callout danger">
     <b>لایسنس غیرتجاری</b>
     وزن‌های CatVTON و SD تحت CC BY-NC-SA 4.0 هستند. FLUX.1 [dev] هم غیرتجاری و
-    gated است. اگر روزی کار تجاری بخواهم، باید مدل یا مجوز جدا بگیرم.
+    gated است. Gemini شرایط Gemini API گوگل را دارد و عکس را از ماشین بیرون
+    می‌برد. اگر روزی کار تجاری بخواهم، باید مدل یا مجوز جدا بگیرم.
   </div>
 
-  <h3>هر خانواده کجا اذیت می‌کند</h3>
+  <h3>کجا گیر می‌کنند</h3>
   <table>
-    <thead><tr><th>خانواده</th><th>چالش اصلی</th><th>اثرش برای کار من</th></tr></thead>
+    <thead><tr><th>خانواده</th><th>گیر اصلی</th><th>برای من یعنی</th></tr></thead>
     <tbody>
-      <tr><td>هر چهار SD</td><td>وابستگی به ماسک تمیز (جز Mask-Free)</td><td>ژست سخت یا پس‌زمینه شلوغ لباس را پاره می‌کند</td></tr>
-      <tr><td>Mix</td><td>جدول رسمی جدا ندارد</td><td>کیفیت را با چشم می‌سنجم نه با FID اختصاصی</td></tr>
-      <tr><td>VITON-HD / DressCode</td><td>تخصص داده</td><td>اگر دسته را عوضی انتخاب کنم کیفیت می‌افتد</td></tr>
-      <tr><td>Mask-Free</td><td>FID زوجی کمی بدتر</td><td>فقط وقتی ماسک خراب است می‌ارزد</td></tr>
+      <tr><td>هر سه اینپینت SD</td><td>ماسک باید تمیز باشد</td><td>ژست سخت یا پس‌زمینه شلوغ لباس را پاره می‌کند</td></tr>
+      <tr><td>Mix</td><td>جدول جدا در مقاله ندارد</td><td>کیفیت را با چشم می‌سنجم نه با FID اختصاصی</td></tr>
+      <tr><td>VITON-HD / DressCode</td><td>هر کدام یک دسته لباس</td><td>اگر دسته را عوضی انتخاب کنم کیفیت می‌افتد</td></tr>
+      <tr><td>Mask-Free</td><td>FID زوجی کمی بدتر · نشت پایین‌تنه</td><td>فقط وقتی ماسک خراب است می‌ارزد؛ Top را قفل می‌کنم</td></tr>
+      <tr><td>Gemini</td><td>کلید و ارسال عکس به Google</td><td>بدون کلید نمی‌سازد؛ هزینه با حساب AI Studio است</td></tr>
+      <tr><td>HF Space</td><td>Space نویسنده‌ها خراب · سهمیه ZeroGPU</td><td>بدون توکن ممکن است صف پر شود یا ۱۸۰ ثانیه کم بیاید</td></tr>
       <tr><td>هر سه FLUX</td><td>دانلود gated و حجم بالا</td><td>بدون login بار اول ممکن است بشکند</td></tr>
       <tr><td>FLUX Alpha</td><td>آموزش فقط بالاتنه</td><td>پایین‌تنه و پیراهن ضعیف‌تر از Beta</td></tr>
       <tr><td>FLUX Beta</td><td>وزن کامل ترنسفورمر</td><td>تعویض مدل کل VRAM را خالی و دوباره پر می‌کند</td></tr>
     </tbody>
   </table>
 
-  <h2>کی کدام را برمی‌دارم</h2>
+  <h2>کی سراغ کدام می‌روم</h2>
   <table>
     <thead><tr><th>سناریو</th><th>انتخاب اول</th><th>انتخاب دوم</th><th>چرا</th></tr></thead>
     <tbody>
       <tr><td>لپ‌تاپ ۸ گیگ، تست روزانه</td><td>Mix + Balanced</td><td>Mix + Fast</td><td>پایدار، سریع، بدون login</td></tr>
       <tr><td>کاتالوگ پیراهن و کت</td><td>VITON-HD</td><td>FLUX Alpha روی HF</td><td>دادهٔ بالاتنه</td></tr>
       <tr><td>پیراهن شب یا ست کامل</td><td>DressCode</td><td>FLUX Beta روی HF</td><td>تنوع دسته</td></tr>
-      <tr><td>سلفی یا ماسک پاره</td><td>Mask-Free</td><td>Mix با نوع لباس درست</td><td>تحمل خطای ماسک</td></tr>
-      <tr><td>لوگو و نوشته روی پارچه</td><td>FLUX Alpha</td><td>FLUX رسمی</td><td>جزئیات گرافیکی</td></tr>
-      <tr><td>بهترین کیفیت ممکن</td><td>FLUX روی ۲۴ گیگ یا HF</td><td>Quality با Mix</td><td>سقف ادراکی بالاتر</td></tr>
-      <tr><td>تولید تجاری</td><td>هیچ‌کدام از این وزن‌ها</td><td>مدل دارای مجوز</td><td>همه غیرتجاری‌اند</td></tr>
+      <tr><td>سلفی یا ماسک پاره</td><td>Mask-Free</td><td>Mix با نوع لباس درست</td><td>Pix2Pix + قفل شلوار در Top</td></tr>
+      <tr><td>GPU پر یا FLUX روی ۸ گیگ خیلی کند</td><td>Gemini</td><td>HF Space</td><td>VRAM محلی صفر؛ کلید یا توکن</td></tr>
+      <tr><td>CatVTON در ابر، بدون Gemini</td><td>HF Space + توکن</td><td>Mix محلی</td><td>Space نویسنده‌ها غالباً RUNTIME_ERROR است</td></tr>
+      <tr><td>لوگو و نوشته روی پارچه</td><td>FLUX Alpha</td><td>FLUX نویسنده‌ها</td><td>جزئیات گرافیکی</td></tr>
+      <tr><td>بهترین کیفیت ممکن</td><td>FLUX روی ۲۴ گیگ</td><td>Gemini یا Quality با Mix</td><td>سقف ادراکی بالاتر · ابر وقتی VRAM کم است</td></tr>
+      <tr><td>تولید تجاری</td><td>هیچ‌کدام از وزن‌های CatVTON/FLUX</td><td>مدل دارای مجوز</td><td>CC BY-NC-SA و FLUX.1 [dev] غیرتجاری‌اند؛ Gemini جدا</td></tr>
     </tbody>
   </table>
 
   <h2>حرف آخر</h2>
   <p>
-    روی کاغذ، CatVTON اینپینت از IDM-VTON و OOTDiffusion هم دقیق‌تر است و هم
-    سبک‌تر: FID زوجی VITON-HD برابر ۵٫۴۲۵، DressCode برابر ۳٫۹۹۲، حدود ۴ گیگ
-    حافظه و ۹٫۲۵ ثانیه در ۱۰۲۴×۷۶۸ روی سخت‌افزار مقاله. Mask-Free کمی از اینپینت
-    ضعیف‌تر است، ولی به ماسک سخت وابسته نیست.
+    اگر فقط عدد مقاله را نگاه کنم، اینپینت CatVTON هم سبک است هم دقیق: FID زوجی
+    ۵٫۴۲۵ روی VITON-HD و ۳٫۹۹۲ روی DressCode، حدود ۴ گیگ و ۹ ثانیه در ۱۰۲۴ روی
+    کارت خودشان. Mask-Free کمی عقب‌تر است، ولی به ماسک تمیز وابسته نیست.
   </p>
   <p>
-    همان خانواده را با چهار آداپتور روی یک UNet سوار کردم. روی RTX 4070 هشت گیگ،
-    Fast حدود ۱۱ ثانیه و Balanced حدود ۱۹ ثانیه طول می‌کشد. FLUX سقف کیفیت را
-    بالا می‌برد، ولی ورود و لایسنس و دانلود و VRAM را هم بالا می‌برد. برای کار
-    روزمره روی این ماشین Mix کافی است. FLUX را وقتی برمی‌دارم که جزئیات پارچه
-    واقعاً می‌ارزد و کارت بزرگ یا Hugging Face دم دست است.
+    همان خانواده را روی لپ‌تاپ سوار کردم. با Mix، Fast حدود ۱۱ ثانیه و Balanced
+    حدود ۱۹ ثانیه. FLUX سقف را بالا می‌برد، ولی ورود و حجم و VRAM را هم با خودش
+    می‌آورد. Gemini و Space را برای وقتی گذاشتم که GPU پر است یا FLUX روی این کارت
+    نمی‌صرفد. روزمره Mix کافی است. Mask-Free را وقتی ماسک پاره است برمی‌دارم.
+    FLUX یا Gemini را وقتی جزئیات پارچه یا کمبود VRAM واقعاً می‌ارزد.
   </p>
 
   <h2>منابع</h2>
   <p class="small">
-    نوشتهٔ میلاد حسنی. عددهای جدول بنچمارک را از جداول ۱ تا ۳ مقالهٔ CatVTON
-    برداشتم مگر جایی که خلافش را نوشتم. زمان لپ‌تاپ را خودم با Mix روی RTX 4070،
-    هشت گیگ، در سپتامبر ۲۰۲۶ گرفتم. اعداد مقاله روی A800 است و با زمان من جمع
-    نمی‌شود.
+    عددهای جدول را از جداول ۱ تا ۳ مقالهٔ CatVTON برداشتم مگر جایی که خلافش را
+    نوشتم. زمان لپ‌تاپ را خودم با Mix روی RTX 4070، هشت گیگ، در سپتامبر ۲۰۲۶
+    گرفتم. اعداد مقاله روی A800 است و با زمان من جمع نمی‌شود.
   </p>
   <ol class="refs">
     <li>Zheng Chong, Xiao Dong, Haoxiang Li, Shiyue Zhang, Wenqing Zhang, Xujie Zhang, Hanqing Zhao, and Xiaodan Liang. CatVTON: Concatenation Is All You Need for Virtual Try-On with Diffusion Models. ICLR 2025. arXiv:2407.15886. <a href="https://arxiv.org/abs/2407.15886">https://arxiv.org/abs/2407.15886</a></li>
-    <li>Zheng Chong et al. وزن‌های عمومی CatVTON و LoRA رسمی FLUX. <a href="https://huggingface.co/zhengchong/CatVTON">zhengchong/CatVTON</a> و <a href="https://huggingface.co/zhengchong/CatVTON-MaskFree">CatVTON-MaskFree</a>. لایسنس CC BY-NC-SA 4.0.</li>
+    <li>Zheng Chong et al. وزن‌های عمومی CatVTON و LoRA FLUX نویسنده‌ها. <a href="https://huggingface.co/zhengchong/CatVTON">zhengchong/CatVTON</a> و <a href="https://huggingface.co/zhengchong/CatVTON-MaskFree">CatVTON-MaskFree</a>. لایسنس CC BY-NC-SA 4.0.</li>
     <li>Seunghwan Choi, Sunghyun Park, Minsoo Lee, and Jaegul Choo. VITON-HD: High-Resolution Virtual Try-On via Misalignment-Aware Normalization. CVPR 2021. <a href="https://arxiv.org/abs/2103.16874">arXiv:2103.16874</a></li>
     <li>Davide Morelli, Matteo Fincato, Marcella Cornia, Federico Landi, Fabio Cesari, and Rita Cucchiara. Dress Code: High-Resolution Multi-Category Virtual Try-On. ECCV 2022. <a href="https://arxiv.org/abs/2204.08532">arXiv:2204.08532</a></li>
     <li>Yisol Choi, Sangkyung Kwak, Sohyun Park, Hyungwon Choi, and Jinwoo Shin. Improving Diffusion Models for Authentic Virtual Try-on in the Wild (IDM-VTON). ECCV 2024. <a href="https://arxiv.org/abs/2403.05139">arXiv:2403.05139</a></li>
@@ -493,8 +550,10 @@
     <li>Tim Brooks, Aleksander Holynski, and Alexei A. Efros. InstructPix2Pix. CVPR 2023. <a href="https://arxiv.org/abs/2211.09800">arXiv:2211.09800</a></li>
     <li>Enze Xie et al. SegFormer. NeurIPS 2021. پارس لباس: <a href="https://huggingface.co/mattmdjaga/segformer_b2_clothes">mattmdjaga/segformer_b2_clothes</a></li>
     <li>Black Forest Labs. FLUX.1-Fill-dev. 2024. <a href="https://huggingface.co/black-forest-labs/FLUX.1-Fill-dev">huggingface.co/black-forest-labs/FLUX.1-Fill-dev</a></li>
+    <li>Google. Gemini API · مدل تصویر gemini-2.5-flash-image و gemini-3.1-flash-image. <a href="https://ai.google.dev/gemini-api/docs/models/gemini-2.5-flash-image">ai.google.dev</a> و کلید <a href="https://aistudio.google.com/apikey">aistudio.google.com/apikey</a>.</li>
+    <li>Hugging Face Spaces. میزبان‌های عمومی CatVTON روی ZeroGPU؛ Space نویسنده‌ها zhengchong/CatVTON غالباً RUNTIME_ERROR است. جایگزین‌های زنده در سپتامبر ۲۰۲۶: <a href="https://huggingface.co/spaces/tryitonvirtual/virtual-tryon">tryitonvirtual/virtual-tryon</a> و <a href="https://huggingface.co/spaces/Nandha2017/virtual-tryon">Nandha2017/virtual-tryon</a>.</li>
     <li>xiaozaa / nftblackmagic. CATVTON-Flux (Alpha و Beta). 2024. <a href="https://github.com/nftblackmagic/catvton-flux">github.com/nftblackmagic/catvton-flux</a></li>
   </ol>
-  <p class="footer-note">میلاد حسنی — Atelier، گزارش مدل‌ها. سپتامبر ۲۰۲۶.</p>
+  <p class="footer-note">میلاد حسنی — Virtual Try-On. سپتامبر ۲۰۲۶.</p>
 </body>
 </html>

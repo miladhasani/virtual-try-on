@@ -12,7 +12,7 @@ if str(ROOT) not in sys.path:
 
 from src.config import ensure_dirs
 from src.ui.layout import build_ui
-from src.ui.theme import build_theme, load_css
+from src.ui.theme import build_theme, load_css, preset_tooltip_js
 
 
 def free_port(preferred: int = 7860, attempts: int = 8) -> int:
@@ -35,6 +35,7 @@ def main() -> None:
         inbrowser=False,
         theme=build_theme(),
         css=load_css(),
+        js=preset_tooltip_js(),
         allowed_paths=[str(ROOT / "assets"), str(ROOT / "outputs")],
     )
 

@@ -1,4 +1,4 @@
-# Launch the local virtual try-on atelier.
+# Launch the local virtual try-on app.
 # Usage:  powershell -ExecutionPolicy Bypass -File .\run.ps1
 
 $ErrorActionPreference = "Stop"
@@ -40,5 +40,5 @@ if ($LASTEXITCODE -ne 0) {
 & $py -m pip install -r requirements.txt
 $env:PYTHONUNBUFFERED = "1"
 $env:HF_HUB_DISABLE_XET = "1"
-Write-Host "Starting Atelier (http://127.0.0.1:7860 or the next free port)"
+Write-Host "Starting Virtual Try-On (http://127.0.0.1:7860 or the next free port)"
 & $py app.py

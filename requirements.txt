@@ -19,6 +19,7 @@ scipy>=1.13.0
 tqdm>=4.66.0
 psutil>=6.0.0
 nvidia-ml-py>=12.560.0
+google-genai>=1.0.0
 
 # CatVTON attention checkpoint loading
 # (accelerate.load_checkpoint_in_model)

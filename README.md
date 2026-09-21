@@ -1,4 +1,4 @@
-# Atelier — local virtual try-on
+# Virtual Try-On
 
 A Gradio app that takes a **person photo** and a **garment photo**, then generates a try-on image with pretrained **[CatVTON](https://github.com/Zheng-Chong/CatVTON)** (ICLR 2025). SD 1.5 adapters fit a laptop **RTX 4070** (~8 GB VRAM). FLUX checkpoints need about **24 GB**.
 

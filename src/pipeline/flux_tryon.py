@@ -226,6 +226,7 @@ class CatVTONFluxPipeline:
         generator=None,
         eta: float = 1.0,
         progress_callback: Optional[Callable[[int, int], None]] = None,
+        cancel_check: Optional[Callable[[], None]] = None,
     ) -> Image.Image:
         del eta
         person = resize_and_crop(image, (width, height))
@@ -242,8 +243,13 @@ class CatVTONFluxPipeline:
             extended_mask = _hconcat(blank, mask_img)
             crop_box = (width, 0, width * 2, height)
 
+        if cancel_check is not None:
+            cancel_check()
+
         def on_step(pipe, step_index, timestep, callback_kwargs):
             del pipe, timestep
+            if cancel_check is not None:
+                cancel_check()
             if progress_callback is not None:
                 progress_callback(int(step_index) + 1, num_inference_steps)
             return callback_kwargs

@@ -17,18 +17,17 @@ def hero() -> str:
     <header class="hero">
       <div class="hero-aura"></div>
       <div class="hero-body">
-        <span class="hero-kicker"><i></i>Virtual atelier</span>
+        <span class="hero-kicker"><i></i>Virtual try-on</span>
         <h1 class="hero-title">See the garment <em>on you</em>.</h1>
         <p class="hero-lede">
-          Drop in a portrait and a clothing shot. A CatVTON or FLUX checkpoint
-          fits the piece to the body on the GPU you choose — your machine, or
-          Hugging Face when you need external hardware.
+          Drop in a portrait and a clothing shot. CatVTON and FLUX run on your GPU.
+          Gemini and Hugging Face run in the cloud when you need extra hardware.
         </p>
         <div class="hero-tags">
           <span class="tag">CatVTON</span>
-          <span class="tag">SD 1.5 · FLUX</span>
-          <span class="tag">Local or Hugging Face</span>
-          <span class="tag gold">7 checkpoints</span>
+          <span class="tag">SD 1.5 · FLUX · Gemini</span>
+          <span class="tag">Local or cloud</span>
+          <span class="tag gold">9 checkpoints</span>
         </div>
       </div>
     </header>
@@ -44,14 +43,55 @@ def section(number: str, title: str, hint: str = "") -> str:
 
 
 def status_bar(job: JobState) -> str:
-    busy = job.started_at is not None
-    percent = (job.step / job.total * 100.0) if job.total else 0.0
+    phase = job.phase or "Idle"
+    lowered = phase.lower()
+    stopping = "stop" in lowered
+    error = lowered.startswith("error") or bool(job.error)
+    busy = job.started_at is not None and not error
+    done = lowered.startswith("done")
+    if stopping:
+        state = "stopping"
+    elif error:
+        state = "error"
+        if job.error and not lowered.startswith("error"):
+            phase = "Error"
+    elif busy:
+        state = "busy"
+    elif done:
+        state = "done"
+    else:
+        state = "calm"
+
+    percent = job.percent()
+    indeterminate = busy and job.total <= 0
+    extras = []
+    if job.total > 0:
+        extras.append(f'<span class="status-steps">{job.step} / {job.total}</span>')
+        extras.append(f'<span class="status-pct">{percent:.0f}%</span>')
+        eta = job.eta_label()
+        if eta:
+            extras.append(f'<span class="status-eta">ETA {escape(eta)}</span>')
+    extras_html = "".join(extras)
+    bar_width = 30.0 if indeterminate else percent
     return f"""
-    <div class="statusbar {'busy' if busy else 'calm'}">
+    <div class="statusbar {state}{' indeterminate' if indeterminate else ''}">
       <span class="status-dot"></span>
-      <span class="status-phase">{escape(job.phase)}</span>
+      <span class="status-phase">{escape(phase)}</span>
+      {extras_html}
       <span class="status-timer">{job.elapsed_label()}</span>
-      <span class="status-track"><i style="width:{percent:.1f}%"></i></span>
+      <span class="status-track"><i style="width:{bar_width:.1f}%"></i></span>
+    </div>
+    """
+
+
+def error_banner(job: JobState) -> str:
+    detail = (job.error or "").strip()
+    if not detail:
+        return '<div class="error-banner is-empty" hidden></div>'
+    return f"""
+    <div class="error-banner" role="alert">
+      <span class="error-kicker">Could not generate</span>
+      <p>{escape(detail)}</p>
     </div>
     """
 
@@ -117,9 +157,10 @@ def run_meta(result: Optional["TryOnResult"] = None) -> str:
 def license_note() -> str:
     return """
     <div class="note">
-      <p><b>Where it runs.</b> Use your own GPU, or Hugging Face when you need external hardware.</p>
+      <p><b>Where it runs.</b> Mix / Mask-Free / FLUX use this GPU. Gemini uses a Google API key. Hugging Face runs CatVTON on a public Space.</p>
       <p><b>No login.</b> Mix, VITON-HD, DressCode, and Mask-Free download in the open. License is CC BY-NC-SA 4.0 (personal / research, not commercial).</p>
-      <p><b>HF login + license.</b> FLUX, FLUX Alpha, and FLUX Beta need a Hugging Face account. Accept <span class="mono">FLUX.1-Fill-dev</span> (and sometimes <span class="mono">FLUX.1-dev</span>), then run <span class="mono">huggingface-cli login</span>.</p>
+      <p><b>Gemini.</b> Paste an API key from <span class="mono">aistudio.google.com/apikey</span>. The key stays in <span class="mono">.secrets.json</span> on this machine.</p>
+      <p><b>HF login + license.</b> FLUX checkpoints need a Hugging Face account. Accept <span class="mono">FLUX.1-Fill-dev</span> (and sometimes <span class="mono">FLUX.1-dev</span>), then paste a token or run <span class="mono">huggingface-cli login</span>.</p>
       <p>The CatVTON / community FLUX adapters themselves are public. The Black Forest Labs backbone is gated and under the FLUX.1 [dev] non-commercial license.</p>
       <p><b>Studio</b> and GPU-mode FLUX are heavy on a small local card. On 8 GB open Advanced and use Tiny/Fast with Offload, Sequential, or 4-bit — or run them on Hugging Face.</p>
     </div>

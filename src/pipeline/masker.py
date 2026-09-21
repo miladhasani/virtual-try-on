@@ -68,6 +68,76 @@ def vis_mask(image: Image.Image, mask: Image.Image) -> Image.Image:
     return Image.fromarray((image_np * (1 - mask_np)).astype(np.uint8))
 
 
+PROTECT_PHASE = {
+    "upper": "Keeping trousers, face, and hair",
+    "lower": "Keeping the top, face, and hair",
+    "overall": "Keeping face and hair",
+}
+
+
+def composite_tryon(
+    original: Image.Image,
+    generated: Image.Image,
+    parse: np.ndarray,
+    cloth_type: str,
+) -> tuple[Image.Image, Image.Image]:
+    """Keep original pixels on regions that this garment type must not change.
+
+    Mask-Free Pix2Pix has no inpaint mask, so it can rewrite trousers when you
+    only asked for a top. Blend those protected parts back from the person photo.
+    """
+    if cloth_type not in PROTECT_PARTS:
+        cloth_type = "upper"
+
+    original = original.convert("RGB")
+    generated = generated.convert("RGB")
+    if generated.size != original.size:
+        generated = generated.resize(original.size, Image.Resampling.LANCZOS)
+
+    orig = np.array(original, dtype=np.float32)
+    gen = np.array(generated, dtype=np.float32)
+    h, w = orig.shape[:2]
+    if parse.shape[:2] != (h, w):
+        parse = cv2.resize(parse, (w, h), interpolation=cv2.INTER_NEAREST)
+
+    keep = _part_mask(parse, PROTECT_PARTS[cloth_type]).astype(np.uint8)
+    if cloth_type == "upper":
+        keep = np.logical_or(keep, _lower_person_band(parse)).astype(np.uint8)
+
+    dilate = max(max(w, h) // 90, 7)
+    if dilate % 2 == 0:
+        dilate += 1
+    kernel = np.ones((dilate, dilate), np.uint8)
+    keep = cv2.dilate(keep, kernel, iterations=1)
+
+    blur_k = max(max(w, h) // 28, 15)
+    if blur_k % 2 == 0:
+        blur_k += 1
+    keep_f = cv2.GaussianBlur(keep.astype(np.float32), (blur_k, blur_k), 0)
+    keep_f = np.clip(keep_f, 0.0, 1.0)[..., None]
+
+    blended = gen * (1.0 - keep_f) + orig * keep_f
+    change = ((1.0 - keep_f[..., 0]) * 255.0).astype(np.uint8)
+    return Image.fromarray(np.clip(blended, 0, 255).astype(np.uint8)), Image.fromarray(change)
+
+
+def _lower_person_band(parse: np.ndarray) -> np.ndarray:
+    """Extra trousers lock when the parser is messy on the lower body."""
+    body = parse != LABELS["Background"]
+    ys, xs = np.where(body)
+    if ys.size == 0:
+        return np.zeros_like(parse, dtype=np.uint8)
+    y0, y1 = int(ys.min()), int(ys.max())
+    x0, x1 = int(xs.min()), int(xs.max())
+    split = int(y0 + 0.55 * (y1 - y0))
+    band = np.zeros_like(parse, dtype=np.uint8)
+    band[split : y1 + 1, x0 : x1 + 1] = 1
+    top_ok = _part_mask(
+        parse, ["Upper-clothes", "Dress", "Left-arm", "Right-arm", "Face", "Hair", "Scarf"]
+    )
+    return np.logical_and(band, np.logical_not(top_ok)).astype(np.uint8)
+
+
 def _part_mask(parse: np.ndarray, parts: list[str]) -> np.ndarray:
     mask = np.zeros_like(parse, dtype=np.uint8)
     for part in parts:

@@ -17,6 +17,8 @@ from src.config import (
     MODEL_CHOICES,
     QUALITY_PRESETS,
     VRAM_PROFILES,
+    load_secrets,
+    preset_tooltip,
 )
 from src.monitor.resources import JobState
 from src.pipeline.tryon import TryOnService
@@ -27,9 +29,8 @@ from src.ui.handlers import StudioHandlers
 CLOTH_LABELS = {"upper": "Top", "lower": "Bottom", "overall": "Full look"}
 
 
-def _preset_hint() -> str:
-    spec = QUALITY_PRESETS[DEFAULT_PRESET]
-    return f"{spec['width']}×{spec['height']} · {spec['steps']} steps by default"
+def _preset_hint(preset: str = DEFAULT_PRESET) -> str:
+    return fragments.section("03", "Render", preset_tooltip(preset))
 
 
 def build_ui(
@@ -41,9 +42,10 @@ def build_ui(
     handlers = StudioHandlers(service, job)
     example_pairs = ensure_examples()
 
-    with gr.Blocks(title="Atelier — Virtual Try-On", fill_width=True) as demo:
+    with gr.Blocks(title="Virtual Try-On", fill_width=True) as demo:
         gr.HTML(fragments.hero())
-        status = gr.HTML(handlers.status())
+        status = gr.HTML(handlers.status(), elem_id="tryon-status")
+        alert = gr.HTML(handlers.alert(), elem_id="tryon-alert")
 
         with gr.Row(equal_height=False, elem_id="stage"):
             with gr.Column(scale=5, min_width=360, elem_classes=["panel", "panel-desk"]):
@@ -79,13 +81,30 @@ def build_ui(
                     elem_id="model-pick",
                 )
                 model_blurb = gr.HTML(handlers.describe_model(DEFAULT_MODEL))
+                saved_keys = load_secrets()
+                with gr.Group(visible=False, elem_id="api-keys") as api_keys:
+                    gemini_key = gr.Textbox(
+                        label="Google Gemini API key",
+                        type="password",
+                        value=saved_keys.get("gemini_api_key") or "",
+                        placeholder="AIza… from aistudio.google.com/apikey",
+                        info="Required for Gemini. Saved only on this computer in .secrets.json.",
+                    )
+                    hf_token = gr.Textbox(
+                        label="Hugging Face token",
+                        type="password",
+                        value=saved_keys.get("hf_token") or "",
+                        placeholder="hf_… from huggingface.co/settings/tokens",
+                        info="Optional for the public CatVTON Space. Needed for gated FLUX downloads.",
+                    )
 
-                gr.HTML(fragments.section("03", "Render", _preset_hint()))
+                render_sec = gr.HTML(_preset_hint(DEFAULT_PRESET))
                 preset = gr.Radio(
                     choices=list(QUALITY_PRESETS),
                     value=DEFAULT_PRESET,
                     label="Quality preset",
                     info="Tiny/Fast save VRAM. Studio and GPU-mode FLUX need a large card.",
+                    elem_id="quality-preset",
                     elem_classes=["segmented"],
                 )
                 with gr.Accordion("Advanced controls", open=False, elem_id="advanced"):
@@ -127,7 +146,16 @@ def build_ui(
 
                 with gr.Row(elem_classes=["actions"]):
                     generate_btn = gr.Button(
-                        "Generate try-on", variant="primary", elem_id="generate-btn", scale=3
+                        "Generate try-on",
+                        variant="primary",
+                        elem_id="generate-btn",
+                        scale=3,
+                    )
+                    stop_btn = gr.Button(
+                        "Stop",
+                        elem_id="stop-btn",
+                        scale=1,
+                        interactive=False,
                     )
                     unload_btn = gr.Button("Free VRAM", elem_id="unload-btn", scale=1)
 
@@ -164,17 +192,52 @@ def build_ui(
                     label="Start from an example",
                 )
 
-        preset.change(handlers.sync_preset, inputs=preset, outputs=[steps, width, height])
-        model.change(handlers.sync_model, inputs=model, outputs=[model_blurb, guidance])
-        generate_btn.click(
-            handlers.generate,
-            inputs=[person, garment, cloth_type, preset, model, steps, guidance, seed, width, height, vram_profile],
-            outputs=[result, comparison, gallery, meta, status, monitor],
+        preset.change(
+            handlers.sync_preset,
+            inputs=preset,
+            outputs=[steps, width, height, render_sec],
         )
-        unload_btn.click(handlers.unload, outputs=[status, monitor])
+        model.change(
+            handlers.sync_model,
+            inputs=model,
+            outputs=[model_blurb, guidance, api_keys, gemini_key, hf_token],
+        )
+        armed = generate_btn.click(
+            handlers.arm_generate,
+            inputs=[person, garment],
+            outputs=[generate_btn, stop_btn, unload_btn, status, alert],
+            queue=False,
+            show_progress="hidden",
+        )
+        gen_event = armed.then(
+            handlers.generate,
+            inputs=[person, garment, cloth_type, preset, model, steps, guidance, seed, width, height, vram_profile, gemini_key, hf_token],
+            outputs=[result, comparison, gallery, meta, status, monitor, alert],
+            show_progress="hidden",
+        )
+        gen_event.then(
+            handlers.action_updates,
+            outputs=[generate_btn, stop_btn, unload_btn],
+            show_progress="hidden",
+        )
+        stop_btn.click(
+            handlers.stop,
+            outputs=[status, alert, monitor, generate_btn, stop_btn, unload_btn],
+            cancels=[gen_event],
+            queue=False,
+            show_progress="hidden",
+        )
+        unload_btn.click(
+            handlers.unload,
+            outputs=[status, alert, monitor, generate_btn, stop_btn, unload_btn],
+            show_progress="hidden",
+        )
 
-        timer = gr.Timer(1.0)
-        timer.tick(handlers.monitor, outputs=monitor, queue=False)
-        timer.tick(handlers.status, outputs=status, queue=False)
+        timer = gr.Timer(0.35)
+        timer.tick(
+            handlers.tick,
+            outputs=[status, alert, monitor, generate_btn, stop_btn, unload_btn],
+            queue=False,
+        )
 
     return demo

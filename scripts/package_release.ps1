@@ -1,4 +1,4 @@
-# Build a self-contained Windows release folder for Atelier.
+# Build a self-contained Windows release folder for Virtual Try-On.
 #
 # Usage (from the repo root):
 #   powershell -ExecutionPolicy Bypass -File .\scripts\package_release.ps1
@@ -42,7 +42,7 @@ if (-not $Version) {
     $Version = if ($sha) { "$stamp-$sha" } else { $stamp }
 }
 
-$PackName = "Atelier-$Version-win"
+$PackName = "Virtual-Try-On-$Version-win"
 $PackRoot = Join-Path $OutputDir $PackName
 $ZipPath = Join-Path $OutputDir "$PackName.zip"
 
@@ -135,9 +135,9 @@ if ($IncludeWeights) {
 
 Write-Step "Writing launchers"
 $startPs1 = @'
-# Start Atelier from this release folder.
-# Double-click Start-Atelier.cmd or run:
-#   powershell -ExecutionPolicy Bypass -File .\Start-Atelier.ps1
+# Start Virtual Try-On from this release folder.
+# Double-click Start-Virtual-Try-On.cmd or run:
+#   powershell -ExecutionPolicy Bypass -File .\Start-Virtual-Try-On.ps1
 
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
@@ -159,7 +159,7 @@ function Find-Python {
 $python = Find-Python
 if (-not $python) {
     Write-Host ""
-    Write-Host "Atelier needs Python 3.10, 3.11, or 3.12 (3.14 is too new for current PyTorch wheels)."
+    Write-Host "Virtual Try-On needs Python 3.10, 3.11, or 3.12 (3.14 is too new for current PyTorch wheels)."
     Write-Host "Install 3.12 from https://www.python.org/downloads/ then run this launcher again."
     Write-Host "During setup, enable 'Add python.exe to PATH'."
     if (Test-Path ".\Install-Python.cmd") {
@@ -185,19 +185,19 @@ if ($LASTEXITCODE -ne 0) {
 & $py -m pip install -r requirements.txt
 $env:PYTHONUNBUFFERED = "1"
 $env:HF_HUB_DISABLE_XET = "1"
-Write-Host "Starting Atelier (http://127.0.0.1:7860 or the next free port)"
+Write-Host "Starting Virtual Try-On (http://127.0.0.1:7860 or the next free port)"
 & $py app.py
 '@
-Set-Content -LiteralPath (Join-Path $PackRoot "Start-Atelier.ps1") -Value $startPs1 -Encoding UTF8
+Set-Content -LiteralPath (Join-Path $PackRoot "Start-Virtual-Try-On.ps1") -Value $startPs1 -Encoding UTF8
 
 $startCmd = @"
 @echo off
 setlocal
 cd /d "%~dp0"
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0Start-Atelier.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0Start-Virtual-Try-On.ps1"
 if errorlevel 1 pause
 "@
-Set-Content -LiteralPath (Join-Path $PackRoot "Start-Atelier.cmd") -Value $startCmd -Encoding ASCII
+Set-Content -LiteralPath (Join-Path $PackRoot "Start-Virtual-Try-On.cmd") -Value $startCmd -Encoding ASCII
 
 $downloadCmd = @"
 @echo off
@@ -211,10 +211,10 @@ Set-Content -LiteralPath (Join-Path $PackRoot "Download-Weights.cmd") -Value $do
 if (-not $SkipInstallers) {
     $pyCmd = @"
 @echo off
-echo Atelier needs Python 3.12 (64-bit). 3.14 is too new for the current PyTorch wheels.
+echo Virtual Try-On needs Python 3.12 (64-bit). 3.14 is too new for the current PyTorch wheels.
 echo Opening the Python download page...
 start "" "https://www.python.org/downloads/release/python-31210/"
-echo Install it, tick "Add python.exe to PATH", then run Start-Atelier.cmd
+echo Install it, tick "Add python.exe to PATH", then run Start-Virtual-Try-On.cmd
 pause
 "@
     Set-Content -LiteralPath (Join-Path $PackRoot "Install-Python.cmd") -Value $pyCmd -Encoding ASCII
@@ -242,7 +242,7 @@ $exampleNote = if ($examplesCopied) {
 }
 
 $readMe = @"
-Atelier $Version
+Virtual Try-On $Version
 ================
 
 Self-contained Windows pack for the virtual try-on studio.
@@ -255,7 +255,7 @@ What you need on this PC
 
 How to start
 1. Unzip this folder anywhere (SSD preferred).
-2. Double-click Start-Atelier.cmd
+2. Double-click Start-Virtual-Try-On.cmd
    First run creates .venv, installs PyTorch (CUDA 12.4) and requirements.
    That download is a few GB.
 3. Open the URL printed in the window (usually http://127.0.0.1:7860).
@@ -279,7 +279,7 @@ Packed: $(Get-Date -Format "yyyy-MM-dd HH:mm")
 Set-Content -LiteralPath (Join-Path $PackRoot "RELEASE.txt") -Value $readMe -Encoding UTF8
 
 $manifest = [ordered]@{
-    name            = "Atelier"
+    name            = "Virtual Try-On"
     version         = $Version
     git             = $gitSha
     packed_utc      = (Get-Date).ToUniversalTime().ToString("o")
@@ -302,4 +302,4 @@ if ($Zip) {
     $zipItem = Get-Item $ZipPath
     Write-Host ("Zip:            {0} ({1:N1} MB)" -f $zipItem.FullName, ($zipItem.Length / 1MB))
 }
-Write-Host "Start with:     $PackRoot\Start-Atelier.cmd"
+Write-Host "Start with:     $PackRoot\Start-Virtual-Try-On.cmd"

@@ -16,6 +16,7 @@ hf_cache/
 *.pth
 
 .env
+.secrets.json
 .huggingface/
 .cache/
 
